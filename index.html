@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System</title>
+    <meta name="description" content="Sistema de gestão e consulta de procedimentos e diretrizes (TUSS e DUT)." />
+    <meta property="og:title" content="System" />
+    <meta property="og:description" content="Sistema de gestão e consulta de procedimentos e diretrizes (TUSS e DUT)." />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+      :root {
+        --system-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --system-font-size-base: 16px;
+        --system-bg: #fbfbfb;
+        --system-surface: #ffffff;
+        --system-text-primary: #000000;
+        --system-text-secondary: #64748b;
+        --system-border: #E5E5E5;
+        --system-card-bg: #ffffff;
+        --system-input-bg: #ffffff;
+      }
+      [data-theme="dark"] {
+        --system-bg: #1C1C1C;
+        --system-surface: #2B2B2B;
+        --system-text-primary: #F2F2F2;
+        --system-text-secondary: #A1A1A1;
+        --system-border: #3B3B3B;
+        --system-card-bg: #2B2B2B;
+        --system-input-bg: #2B2B2B;
+      }
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        font-size: var(--system-font-size-base, 16px);
+        background-color: var(--system-bg, #fbfbfb);
+        color: var(--system-text-primary, #000000);
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        text-transform: uppercase;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        font-family: var(--system-font-family);
+        background-color: var(--system-bg, #fbfbfb);
+        color: var(--system-text-primary, #000000);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        transition: background-color 0.2s ease, color 0.2s ease;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        text-transform: uppercase;
+      }
+      #root {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      input, select, textarea {
+        font-family: inherit;
+        font-size: inherit;
+        user-select: text;
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        text-transform: uppercase;
+      }
+      button {
+        font-family: inherit;
+        font-size: inherit;
+        text-transform: uppercase;
+      }
+      img {
+        user-select: none;
+        -webkit-user-select: none;
+        user-drag: none;
+        -webkit-user-drag: none;
+      }
+
+      /* Estilização Global de Barras de Rolagem (Scrollbar) do Sistema */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(100, 116, 139, 0.22);
+        border-radius: 9999px;
+        transition: background-color 0.15s ease;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(100, 116, 139, 0.45);
+      }
+      ::-webkit-scrollbar-thumb:active {
+        background-color: rgba(100, 116, 139, 0.65);
+      }
+      ::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+
+      [data-theme="dark"] ::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.18);
+      }
+      [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.35);
+      }
+      [data-theme="dark"] ::-webkit-scrollbar-thumb:active {
+        background-color: rgba(255, 255, 255, 0.5);
+      }
+
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+      }
+      [data-theme="dark"] * {
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+
+      /* Classe utilitária dedicada para containers de rolagem */
+      .system-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+      }
+      [data-theme="dark"] .system-scrollbar {
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

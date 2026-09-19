@@ -1,0 +1,8 @@
+{
+  "name": "System",
+  "description": "Sistema de gestão e consulta de procedimentos e diretrizes (TUSS e DUT).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
