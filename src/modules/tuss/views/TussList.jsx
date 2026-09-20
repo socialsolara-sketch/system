@@ -23,108 +23,7 @@ const columns = [
 // Base de Dados Simulada Paginada
 // ==========================================
 
-const mockDataByPage = {
-  1: [
-    {
-      codigo: '10101012',
-      descricao: 'Consulta médica em consultório (no horário normal ou preestabelecido)',
-      diretrizes: 'Cobertura obrigatória para planos ambulatoriais e hospitalares com obstetrícia segundo diretrizes da RN ANS n° 465/2021.',
-      especialidade: 'Clínica Médica Geral',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Ativo',
-      revisao: '12/08/2024'
-    },
-    {
-      codigo: '10101020',
-      descricao: 'Consulta em pronto-socorro geral ou pediátrico para triagem e urgência',
-      diretrizes: 'Atendimento de urgência e emergência sem exigência de carência após 24h da contratação formal do plano.',
-      especialidade: 'Medicina de Urgência',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Ativo',
-      revisao: '15/09/2024'
-    }
-  ],
-  2: [
-    {
-      codigo: '40101010',
-      descricao: 'Eletrocardiograma convencional de 12 derivações com laudo especializado',
-      diretrizes: 'Indicado para avaliação cardiológica de rotina, pré-operatório e dor precordial suspeita.',
-      especialidade: 'Cardiologia Clínica',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Ativo',
-      revisao: '04/07/2024'
-    },
-    {
-      codigo: '40301608',
-      descricao: 'Hemograma completo com contagem de plaquetas e frações automatizadas',
-      diretrizes: 'Investigação hematológica de rotina, anemias, infecções agudas e monitoramento oncológico.',
-      especialidade: 'Patologia Clínica',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Ativo',
-      revisao: '22/08/2024'
-    }
-  ],
-  3: [
-    {
-      codigo: '40901122',
-      descricao: 'Ultrassonografia de abdome total com dopplerfluxometria e mapeamento vascular',
-      diretrizes: 'Exige justificativa clínica prévia com indicação precisa para órgãos sólidos e sistema vascular.',
-      especialidade: 'Radiologia e Diagnóstico',
-      rolAns: 'Diretriz de Utilização',
-      status: 'Ativo',
-      revisao: '11/06/2024'
-    },
-    {
-      codigo: '40804054',
-      descricao: 'Radiografia de tórax padrão em projeções PA e perfil esquerdo completo',
-      diretrizes: 'Triagem pulmonar, suspeita de pneumonia, avaliação de silhueta cardíaca e trauma torácico.',
-      especialidade: 'Radiologia Convencional',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Pendente',
-      revisao: '30/08/2024'
-    }
-  ],
-  4: [
-    {
-      codigo: '41101018',
-      descricao: 'Ressonância magnética de encéfalo com espectroscopia e difusão de água',
-      diretrizes: 'Investigação de doenças desmielinizantes, cefaleias refratárias, tumores e acidente vascular encefálico.',
-      especialidade: 'Neurorradiologia',
-      rolAns: 'Diretriz de Utilização',
-      status: 'Ativo',
-      revisao: '19/05/2024'
-    },
-    {
-      codigo: '41001013',
-      descricao: 'Tomografia computadorizada de crânio e órbitas com reconstrução tridimensional',
-      diretrizes: 'Trauma cranioencefálico, hemorragia aguda intracraniana e avaliação pré-cirúrgica bucomaxilofacial.',
-      especialidade: 'Diagnóstico por Imagem',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Ativo',
-      revisao: '03/09/2024'
-    }
-  ],
-  5: [
-    {
-      codigo: '40201082',
-      descricao: 'Endoscopia digestiva alta diagnóstica com teste rápido de urease e biópsias',
-      diretrizes: 'Investigação de dispepsia persistente, refluxo gastroesofágico refratário e hemorragia digestiva.',
-      especialidade: 'Gastroenterologia',
-      rolAns: 'Obrigatório Nacional',
-      status: 'Ativo',
-      revisao: '14/09/2024'
-    },
-    {
-      codigo: '40201147',
-      descricao: 'Colonoscopia total com magnificação óptica e polipectomia preventiva',
-      diretrizes: 'Rastreamento de neoplasia colorretal a partir dos 45 anos ou histórico familiar precoce.',
-      especialidade: 'Coloproctologia',
-      rolAns: 'Diretriz de Utilização',
-      status: 'Ativo',
-      revisao: '18/09/2024'
-    }
-  ]
-}
+const mockDataByPage = {}
 
 // ==========================================
 // Componente TussList
@@ -135,14 +34,14 @@ export default function TussList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState(null)
-  const totalPages = 5
+  const totalPages = 1
 
   // ==========================================
   // Filtragem e Busca de Dados
   // ==========================================
 
   const filteredData = useMemo(() => {
-    const raw = mockDataByPage[currentPage] || mockDataByPage[1] || []
+    const raw = mockDataByPage[currentPage] || []
     return raw.filter((item) => {
       if (statusFilter && item.status !== statusFilter) return false
       if (!searchQuery.trim()) return true

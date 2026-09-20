@@ -108,7 +108,13 @@ export default function Header({
         </h1>
       </div>
 
-      {showSearchAndFilter ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {actions && (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {actions}
+          </div>
+        )}
+        {showSearchAndFilter && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -277,11 +283,8 @@ export default function Header({
             )}
           </div>
         </div>
-      ) : actions && (
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          {actions}
-        </div>
-      )}
+        )}
+      </div>
     </header>
   )
 }

@@ -96,7 +96,7 @@ export default function GuiaList() {
   const navigate = useNavigate()
   const { notify } = useNotification()
   const { setPagination, resetPagination } = usePagination()
-  const [guiasList, setGuiasList] = useState(mockGuiasData)
+  const [guiasList, setGuiasList] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState(null)

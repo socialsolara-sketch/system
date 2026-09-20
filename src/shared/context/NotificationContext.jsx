@@ -17,32 +17,7 @@ function generateNotificationId() {
   return `notif-${Date.now()}-${notificationCounter}`
 }
 
-const initialMockNotifications = [
-  {
-    id: 'notif-1',
-    type: 'info',
-    title: 'Tabela TUSS Atualizada',
-    message: 'A versão 2024.09 da Terminologia Unificada da Saúde Suplementar está disponível.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    read: false
-  },
-  {
-    id: 'notif-2',
-    type: 'warning',
-    title: 'DUT Pendente de Aprovação',
-    message: 'A solicitação DUT-2024-002 aguarda validação de leito de destino com urgência.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    read: false
-  },
-  {
-    id: 'notif-3',
-    type: 'success',
-    title: 'Sincronização Concluída',
-    message: 'Base de dados cadastral sincronizada com os servidores centrais com sucesso.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    read: true
-  }
-]
+const initialMockNotifications = []
 
 // ==========================================
 // Provedor de Notificações

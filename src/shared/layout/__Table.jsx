@@ -252,7 +252,22 @@ export default function Table({ columns = [], data = [], onRowClick, onRowContex
           </tr>
         </thead>
         <tbody>
-          {data.length === 0 ? null : (
+          {data.length === 0 ? (
+            <tr>
+              <td
+                colSpan={columns.length || 1}
+                style={{
+                  padding: '3rem 1rem',
+                  textAlign: 'center',
+                  color: currentTheme ? currentTheme.colors.textSecondary : textColors.secondary,
+                  fontSize: '0.875rem',
+                  border: `1px solid ${gridLineColor}`
+                }}
+              >
+                Nenhum registro encontrado.
+              </td>
+            </tr>
+          ) : (
             data.map((row, rowIndex) => (
               <tr
                 key={row.id || row.codigo || row.numero || rowIndex}

@@ -2,7 +2,7 @@
 // Descrição: Widget de chat interno flat integrado ao rodapé do sistema para comunicação entre operadores e reguladores.
 
 import { useState, useRef, useEffect } from 'react'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import {
   MessageSquare,
   X,
@@ -19,75 +19,10 @@ import {
 import { useTheme } from '../context'
 
 // ==========================================
-// Contatos Iniciais Simulados
+// Contatos Iniciais
 // ==========================================
 
-const initialContacts = [
-  {
-    id: 'camila',
-    name: 'Dra. Camila Santos',
-    role: 'Auditoria Médica TUSS',
-    avatar: 'CS',
-    avatarBg: '#0284c7',
-    status: 'online',
-    unread: 1,
-    messages: [
-      { id: 1, sender: 'them', text: 'Olá! Conseguiu revisar as regras de carência do TUSS 10101012?', time: '14:22' },
-      { id: 2, sender: 'me', text: 'Boa tarde, Camila! Estou finalizando a conferência conforme a RN 465 da ANS.', time: '14:25' },
-      { id: 3, sender: 'them', text: 'Perfeito! Se precisar de apoio na justificativa clínica me avise por aqui.', time: '14:26' }
-    ]
-  },
-  {
-    id: 'roberto',
-    name: 'Dr. Roberto Mendes',
-    role: 'Regulação & DUT',
-    avatar: 'RM',
-    avatarBg: '#059669',
-    status: 'online',
-    unread: 1,
-    messages: [
-      { id: 1, sender: 'them', text: 'A solicitação DUT-2024-001 de UTI móvel já foi liberada pelo hospital de destino.', time: '13:50' },
-      { id: 2, sender: 'me', text: 'Excelente notícia! Vou atualizar o status no sistema agora.', time: '13:52' }
-    ]
-  },
-  {
-    id: 'carlos',
-    name: 'Carlos Eduardo',
-    role: 'Faturamento & Guias',
-    avatar: 'CE',
-    avatarBg: '#d97706',
-    status: 'away',
-    unread: 0,
-    messages: [
-      { id: 1, sender: 'them', text: 'Fechamento do lote de guias programado para as 18h.', time: '11:10' },
-      { id: 2, sender: 'me', text: 'Certo, já incluí os procedimentos ambulatoriais validados.', time: '11:15' }
-    ]
-  },
-  {
-    id: 'fernanda',
-    name: 'Fernanda Lima',
-    role: 'Suporte Operacional',
-    avatar: 'FL',
-    avatarBg: '#7c3aed',
-    status: 'online',
-    unread: 0,
-    messages: [
-      { id: 1, sender: 'them', text: 'Sistema atualizado com sucesso. Se notar alguma lentidão nos filtros me dê um toque.', time: '09:30' }
-    ]
-  },
-  {
-    id: 'marcos',
-    name: 'Marcos Vinícius',
-    role: 'Coordenação de TI',
-    avatar: 'MV',
-    avatarBg: '#475569',
-    status: 'offline',
-    unread: 0,
-    messages: [
-      { id: 1, sender: 'them', text: 'Backup diário dos bancos TUSS/DUT concluído com êxito.', time: 'Ontem' }
-    ]
-  }
-]
+const initialContacts = []
 
 // ==========================================
 // Sugestões Rápidas de Mensagens
@@ -302,177 +237,211 @@ export default function ChatWidget() {
       </button>
 
       {/* Caixa Flat Acoplada Diretamente Sobre a Borda Superior do Footer */}
-      {isOpen && (
-        <motion.div
-          id="internal-chat-flat-box"
-          drag
-          dragMomentum={false}
-          dragElastic={0}
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          style={{
-            position: 'fixed',
-            bottom: '49px', // Assentada diretamente sobre a borda superior do rodapé (height 50px)
-            right: '16px',
-            width: '350px',
-            maxWidth: 'calc(100vw - 32px)',
-            height: isMinimized ? '42px' : '470px',
-            maxHeight: 'calc(100vh - 100px)',
-            backgroundColor: bgColor,
-            border: `1px solid ${borderColor}`,
-            borderRadius: '8px 8px 0 0', // Base plana acoplada à borda do rodapé
-            boxShadow: isDark ? '0 -4px 12px rgba(0, 0, 0, 0.3)' : '0 -4px 12px rgba(0, 0, 0, 0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            zIndex: 100000,
-            pointerEvents: 'auto',
-            transition: 'height 0.2s ease, scale 0.2s ease, opacity 0.2s ease',
-            fontFamily: 'inherit'
-          }}
-        >
-          {/* Cabeçalho do Chat */}
-          <div style={{
-            height: '42px',
-            minHeight: '42px',
-            backgroundColor: primaryColor,
-            color: '#ffffff',
-            padding: '0 0.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.5rem',
-            userSelect: 'none',
-            cursor: 'grab'
-          }}
-          onMouseDown={(e) => e.currentTarget.style.cursor = 'grabbing'}
-          onMouseUp={(e) => e.currentTarget.style.cursor = 'grab'}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="internal-chat-flat-box"
+            id="internal-chat-flat-box"
+            drag="x"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragMomentum={false}
+            dragElastic={0}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{
+              height: isMinimized ? 42 : 470,
+              opacity: 1
+            }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              type: 'spring',
+              stiffness: 340,
+              damping: 30,
+              opacity: { duration: 0.18 }
+            }}
+            style={{
+              position: 'fixed',
+              bottom: '50px', // Rigorosamente assentada sobre a borda superior do rodapé (height 50px)
+              right: '16px',
+              width: '350px',
+              maxWidth: 'calc(100vw - 32px)',
+              maxHeight: 'calc(100vh - 65px)',
+              backgroundColor: bgColor,
+              border: `1px solid ${borderColor}`,
+              borderBottom: 'none', // Funde-se diretamente com o topo do rodapé
+              borderRadius: '8px 8px 0 0', // Base plana acoplada à borda do rodapé
+              boxShadow: isDark ? '0 -6px 20px rgba(0, 0, 0, 0.4)' : '0 -6px 20px rgba(0, 0, 0, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              zIndex: 9999,
+              pointerEvents: 'auto',
+              transformOrigin: 'bottom right',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box'
+            }}
           >
-            {/* Título / Contato Ativo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }} onMouseDown={(e) => e.stopPropagation()}>
-              {activeContactId ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveContactId(null)}
-                    title="Voltar aos colaboradores"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
+            {/* Cabeçalho do Chat */}
+            <div
+              onClick={() => {
+                if (isMinimized) setIsMinimized(false)
+              }}
+              style={{
+                height: '42px',
+                minHeight: '42px',
+                backgroundColor: primaryColor,
+                color: '#ffffff',
+                padding: '0 0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+                userSelect: 'none',
+                cursor: isMinimized ? 'pointer' : 'ew-resize',
+                flexShrink: 0
+              }}
+              onMouseDown={(e) => {
+                if (!isMinimized) e.currentTarget.style.cursor = 'ew-resize'
+              }}
+              onMouseUp={(e) => {
+                if (!isMinimized) e.currentTarget.style.cursor = 'ew-resize'
+              }}
+            >
+              {/* Título / Contato Ativo */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }} onMouseDown={(e) => e.stopPropagation()}>
+                {activeContactId ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setActiveContactId(null)}
+                      title="Voltar aos colaboradores"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '3px'
+                      }}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <div style={{
+                      position: 'relative',
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '50%',
+                      backgroundColor: activeContact?.avatarBg || '#0284c7',
                       color: '#ffffff',
-                      cursor: 'pointer',
-                      padding: '2px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: '3px'
-                    }}
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <div style={{
-                    position: 'relative',
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    backgroundColor: activeContact?.avatarBg || '#0284c7',
+                      fontSize: '0.6875rem',
+                      fontWeight: '700',
+                      flexShrink: 0
+                    }}>
+                      {activeContact?.avatar}
+                      <span style={{
+                        position: 'absolute',
+                        bottom: '-1px',
+                        right: '-1px',
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        backgroundColor: activeContact?.status === 'online' ? '#22c55e' : (activeContact?.status === 'away' ? '#f59e0b' : '#94a3b8'),
+                        border: `1px solid ${primaryColor}`
+                      }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2
+                      }}>
+                        {activeContact?.name}
+                      </span>
+                      <span style={{
+                        fontSize: '0.625rem',
+                        opacity: 0.85,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2
+                      }}>
+                        {activeContact?.role}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare size={15} />
+                    <span style={{ fontSize: '0.8125rem', fontWeight: '600', lineHeight: 1.2 }}>
+                      Chat Interno
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Controles de Janela */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }} onMouseDown={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsMinimized((prev) => !prev)
+                  }}
+                  title={isMinimized ? 'Expandir para cima' : 'Minimizar para o rodapé'}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
                     color: '#ffffff',
+                    cursor: 'pointer',
+                    padding: '4px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.6875rem',
-                    fontWeight: '700',
-                    flexShrink: 0
-                  }}>
-                    {activeContact?.avatar}
-                    <span style={{
-                      position: 'absolute',
-                      bottom: '-1px',
-                      right: '-1px',
-                      width: '7px',
-                      height: '7px',
-                      borderRadius: '50%',
-                      backgroundColor: activeContact?.status === 'online' ? '#22c55e' : (activeContact?.status === 'away' ? '#f59e0b' : '#94a3b8'),
-                      border: `1px solid ${primaryColor}`
-                    }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      lineHeight: 1.2
-                    }}>
-                      {activeContact?.name}
-                    </span>
-                    <span style={{
-                      fontSize: '0.625rem',
-                      opacity: 0.85,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      lineHeight: 1.2
-                    }}>
-                      {activeContact?.role}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <MessageSquare size={15} />
-                  <span style={{ fontSize: '0.8125rem', fontWeight: '600', lineHeight: 1.2 }}>
-                    Chat Interno
-                  </span>
-                </>
-              )}
+                    opacity: 0.85
+                  }}
+                >
+                  {isMinimized ? <Maximize2 size={13} /> : <Minus size={13} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsOpen(false)
+                  }}
+                  title="Fechar chat"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0.85
+                  }}
+                >
+                  <X size={15} />
+                </button>
+              </div>
             </div>
 
-            {/* Controles de Janela */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }} onMouseDown={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                onClick={() => setIsMinimized((prev) => !prev)}
-                title={isMinimized ? 'Expandir' : 'Minimizar'}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: 0.85
-                }}
-              >
-                {isMinimized ? <Maximize2 size={13} /> : <Minus size={13} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                title="Fechar chat"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: 0.85
-                }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* Corpo do Chat */}
-          {!isMinimized && (
-            <>
+            {/* Corpo do Chat */}
+            <div style={{
+              display: isMinimized ? 'none' : 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              minHeight: 0,
+              overflow: 'hidden'
+            }}>
               {!activeContactId ? (
                 /* Lista de Contatos */
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -830,10 +799,10 @@ export default function ChatWidget() {
                   </form>
                 </div>
               )}
-            </>
-          )}
-        </motion.div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

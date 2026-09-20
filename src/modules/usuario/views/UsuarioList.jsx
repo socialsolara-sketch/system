@@ -7,6 +7,7 @@ import { Header, Table, Button, ContextMenu } from '@layout'
 import { usePagination, useNotification } from '@shared/context'
 import { getModuleColors } from '@themes'
 import mockUsuariosData from '../data/mockUsuarios'
+import GoogleSheetsModal from '../components/GoogleSheetsModal'
 
 // ==========================================
 // Funções Utilitárias de Formatação
@@ -134,7 +135,7 @@ export default function UsuarioList() {
   const moduleColors = getModuleColors('usuario')
   const { setPagination, resetPagination } = usePagination()
 
-  const [usuariosList, setUsuariosList] = useState(mockUsuariosData)
+  const [usuariosList, setUsuariosList] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState(null)
@@ -147,6 +148,9 @@ export default function UsuarioList() {
     y: 0,
     selectedUser: null
   })
+
+  // Estado do Modal de Integração com Google Sheets
+  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false)
 
   // ==========================================
   // Filtragem e Busca de Dados
@@ -241,6 +245,14 @@ export default function UsuarioList() {
           { label: 'Cancelado', value: 'Cancelado' }
         ]}
         actions={[
+          <Button
+            key="sheets"
+            variant="secondary"
+            onClick={() => setIsSheetsModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            Google Sheets
+          </Button>,
           <Button key="novo" to="/usuario/novo" style={{ backgroundColor: moduleColors.primary }}>
             + Novo Usuário
           </Button>
@@ -266,6 +278,12 @@ export default function UsuarioList() {
         onView={handleViewUser}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
+      />
+
+      {/* Modal de Conexão e Criação de Aba no Google Sheets */}
+      <GoogleSheetsModal
+        isOpen={isSheetsModalOpen}
+        onClose={() => setIsSheetsModalOpen(false)}
       />
     </div>
   )

@@ -2,7 +2,7 @@
 // Descrição: Painel flat e minimalista de notificações com filtros rápidos, busca e controle de leitura.
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { X, Trash2, Check, Search } from 'lucide-react'
 import { useNotification, useTheme } from '@shared/context'
 
@@ -103,8 +103,6 @@ export default function NotificationPanel() {
     })
   }, [notifications, filter, searchQuery])
 
-  if (!isPanelOpen) return null
-
   // ==========================================
   // Tokens de Estilo do Tema
   // ==========================================
@@ -135,35 +133,40 @@ export default function NotificationPanel() {
   }
 
   return (
-    <motion.div
-      ref={panelRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Notificações"
-      drag
-      dragMomentum={false}
-      dragElastic={0}
-      initial={{ x: 300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      style={{
-        position: 'fixed',
-        top: '50px',
-        right: '1rem',
-        width: '440px',
-        maxWidth: 'calc(100vw - 2rem)',
-        maxHeight: 'calc(100vh - 70px)',
-        backgroundColor: bg,
-        color: textPrimary,
-        border: `1px solid ${border}`,
-        boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.3)' : '0 4px 14px rgba(0, 0, 0, 0.06)',
-        zIndex: 8999,
-        display: 'flex',
-        flexDirection: 'column',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
-        borderRadius: '8px'
-      }}
-    >
+    <AnimatePresence>
+      {isPanelOpen && (
+        <motion.div
+          key="notification-panel"
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notificações"
+          drag
+          dragMomentum={false}
+          dragElastic={0}
+          initial={{ y: -32, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -24, opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            position: 'fixed',
+            top: '50px',
+            right: '1rem',
+            width: '440px',
+            maxWidth: 'calc(100vw - 2rem)',
+            maxHeight: 'calc(100vh - 70px)',
+            backgroundColor: bg,
+            color: textPrimary,
+            border: `1px solid ${border}`,
+            boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.3)' : '0 4px 14px rgba(0, 0, 0, 0.06)',
+            zIndex: 8999,
+            display: 'flex',
+            flexDirection: 'column',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+            borderRadius: '8px'
+          }}
+        >
         <div 
           style={{
             padding: '0.875rem 1rem',
@@ -521,5 +524,7 @@ export default function NotificationPanel() {
           </button>
         </div>
       </motion.div>
-    )
+    )}
+  </AnimatePresence>
+)
 }

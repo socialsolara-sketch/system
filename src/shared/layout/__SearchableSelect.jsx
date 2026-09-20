@@ -75,10 +75,10 @@ export default function SearchableSelect({
   const triggerStyle = {
     width: '100%',
     padding: '0.625rem 0.875rem',
-    border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#334155' : '#e2e8f0')}`,
+    border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3B3B3B' : '#E5E5E5')}`,
     borderRadius: '0.375rem',
-    backgroundColor: isDark ? (currentTheme?.colors?.input || 'rgba(0, 0, 0, 0.2)') : '#ffffff',
-    color: value ? (isDark ? '#ffffff' : '#0f172a') : (isDark ? '#9ca3af' : '#94a3b8'),
+    backgroundColor: currentTheme?.colors?.input || (isDark ? '#2B2B2B' : '#ffffff'),
+    color: value ? (currentTheme?.colors?.textPrimary || (isDark ? '#F2F2F2' : '#171717')) : (currentTheme?.colors?.textTertiary || (isDark ? '#A1A1A1' : '#737373')),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -96,8 +96,8 @@ export default function SearchableSelect({
     left: 0,
     right: 0,
     marginTop: '0.25rem',
-    backgroundColor: currentTheme?.colors?.card || (isDark ? '#111827' : '#ffffff'),
-    border: `1px solid ${isDark ? '#374151' : '#e2e8f0'}`,
+    backgroundColor: currentTheme?.colors?.card || (isDark ? '#2B2B2B' : '#ffffff'),
+    border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3B3B3B' : '#E5E5E5')}`,
     borderRadius: '0.5rem',
     boxShadow: isDark ? '0 20px 25px -5px rgba(0, 0, 0, 0.5)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
     zIndex: 9999,
@@ -109,13 +109,13 @@ export default function SearchableSelect({
 
   const searchBoxStyle = {
     padding: '0.75rem',
-    borderBottom: `1px solid ${isDark ? '#374151' : '#e2e8f0'}`,
+    borderBottom: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3B3B3B' : '#E5E5E5')}`,
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
     position: 'sticky',
     top: 0,
-    backgroundColor: currentTheme?.colors?.card || (isDark ? '#111827' : '#ffffff'),
+    backgroundColor: currentTheme?.colors?.card || (isDark ? '#2B2B2B' : '#ffffff'),
     zIndex: 2
   }
 
@@ -127,7 +127,7 @@ export default function SearchableSelect({
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0,0,0,0.03)',
     padding: '0.6rem 0.75rem',
     borderRadius: '0.375rem',
-    border: `1px solid ${isDark ? '#374151' : '#e2e8f0'}`
+    border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3B3B3B' : '#E5E5E5')}`
   }
 
   const searchInputStyle = {
@@ -136,7 +136,7 @@ export default function SearchableSelect({
     outline: 'none',
     fontSize: '0.875rem',
     backgroundColor: 'transparent',
-    color: isDark ? '#ffffff' : '#0f172a',
+    color: currentTheme?.colors?.textPrimary || (isDark ? '#F2F2F2' : '#171717'),
     fontWeight: '500'
   }
 
@@ -145,13 +145,13 @@ export default function SearchableSelect({
     cursor: 'pointer',
     fontSize: '0.875rem',
     backgroundColor: isSelected 
-      ? (isDark ? 'rgba(255, 255, 255, 0.08)' : (currentTheme?.colors?.primary + '20' || '#3b82f620'))
+      ? (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)')
       : isHovered 
         ? (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)')
         : 'transparent',
     color: isSelected 
-      ? (isDark ? '#f8fafc' : (currentTheme?.colors?.primary || '#3b82f6')) 
-      : (isDark ? '#d1d5db' : '#1e293b'),
+      ? (currentTheme?.colors?.textPrimary || (isDark ? '#FFFFFF' : '#171717')) 
+      : (currentTheme?.colors?.textSecondary || (isDark ? '#D9D9D9' : '#374151')),
     fontWeight: isSelected ? '700' : '500',
     transition: 'all 0.1s ease',
     display: 'flex',
@@ -231,7 +231,7 @@ export default function SearchableSelect({
                   }}
                 >
                   {getLabel(opt)}
-                  {isSelected && <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isDark ? '#94a3b8' : (currentTheme?.colors?.primary || '#3b82f6') }} />}
+                  {isSelected && <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isDark ? '#D9D9D9' : '#525252' }} />}
                 </div>
               )
             })

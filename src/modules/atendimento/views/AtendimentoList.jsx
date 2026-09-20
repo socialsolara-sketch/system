@@ -8,18 +8,7 @@ import { MessageSquare, Send, Search, User, Settings, Reply, Shuffle, CheckCircl
 import { ConfirmationModal } from '@shared/layout'
 import { useTheme, useNotification } from '@shared/context'
 
-const mockConversations = [
-  { id: 1, name: 'Hospital das Clínicas', phone: '(11) 98765-4321', lastMessage: 'Documento recebido, aguardando análise.', time: '10:30', unread: 2 },
-  { id: 2, name: 'Dr. Roberto Silva', phone: '(11) 91234-5678', lastMessage: 'Paciente estabilizado?', time: '09:15', unread: 0 },
-  { id: 3, name: 'Beneficiário João Souza', phone: '(11) 97777-8888', lastMessage: 'Qual o horário da consulta?', time: 'Ontem', unread: 0 },
-  { id: 4, name: 'Clínica São José', phone: '(11) 96666-5555', lastMessage: 'Autorização pendente.', time: '08:45', unread: 1 },
-  { id: 5, name: 'Maria Oliveira', phone: '(11) 94444-3333', lastMessage: 'Obrigada pelo retorno.', time: '08:20', unread: 0 },
-  { id: 6, name: 'Laboratório Central', phone: '(11) 93333-2222', lastMessage: 'Resultados disponíveis.', time: '07:50', unread: 3 },
-  { id: 7, name: 'Unidade Norte', phone: '(11) 92222-1111', lastMessage: 'Solicitação de agendamento.', time: '07:15', unread: 0 },
-  { id: 8, name: 'Farmácia Popular', phone: '(11) 91111-0000', lastMessage: 'Medicamento em falta.', time: '06:30', unread: 0 },
-  { id: 9, name: 'Hospital Regional', phone: '(11) 90000-9999', lastMessage: 'Leito disponível.', time: '06:00', unread: 1 },
-  { id: 10, name: 'Dra. Fernanda Lins', phone: '(11) 98888-7777', lastMessage: 'Encaminhamento enviado.', time: '05:45', unread: 0 },
-]
+const mockConversations = []
 
 const sidebarItems = [
   { id: 'queue', label: 'Fila', icon: Inbox },
@@ -33,7 +22,7 @@ export default function AtendimentoList() {
   const { currentTheme, isDark } = useTheme()
   const { notify } = useNotification()
   const constraintsRef = useRef(null)
-  const [selectedChat, setSelectedChat] = useState(mockConversations[0])
+  const [selectedChat, setSelectedChat] = useState(null)
   const [activeSidebar, setActiveSidebar] = useState('queue')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -44,16 +33,9 @@ export default function AtendimentoList() {
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false)
   const [attachedFiles, setAttachedFiles] = useState([])
   const [previewFiles, setPreviewFiles] = useState([])
-  const [quickReplies, setQuickReplies] = useState([
-    { id: 1, title: 'Saudação', message: 'Olá! Como posso ajudar?' },
-    { id: 2, title: 'Transferência', message: 'Vou transferir seu atendimento.' }
-  ])
+  const [quickReplies, setQuickReplies] = useState([])
   const [isQuickReplyModalOpen, setIsQuickReplyModalOpen] = useState(false)
-  const [contacts, setContacts] = useState([
-    { id: 1, name: 'João Silva', phone: '(11) 99999-1111', email: 'joao@email.com' },
-    { id: 2, name: 'Maria Souza', phone: '(11) 99999-2222', email: 'maria@email.com' },
-    { id: 3, name: 'Carlos Oliveira', phone: '(11) 99999-3333', email: 'carlos@email.com' },
-  ])
+  const [contacts, setContacts] = useState([])
   const [isContactModalOpen, setIsContactModalOpen] = useState(false)
   const [selectedContact, setSelectedContact] = useState(null)
   const [contactForm, setContactForm] = useState({ name: '', phone: '', email: '' })
@@ -363,81 +345,87 @@ export default function AtendimentoList() {
                       <span>Aguardando na Fila</span>
                       <span style={{ color: currentTheme?.colors?.primary }}>{mockConversations.length} REGISTROS</span>
                     </div>
-                    {mockConversations.map((chat, index) => (
-                      <div 
-                        key={chat.id} 
-                        style={{ 
-                          padding: '16px', 
-                          borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
-                          backgroundColor: 'transparent',
-                          transition: 'background-color 0.2s ease',
-                          cursor: 'default'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <span style={{ 
-                            fontSize: '0.6rem', 
-                            fontWeight: '800', 
-                            color: currentTheme?.colors?.primary, 
-                            backgroundColor: currentTheme?.colors?.primary + '15', 
-                            padding: '3px 8px', 
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em'
-                          }}>
-                            #{index + 1} NA FILA
-                          </span>
-                          <span style={{ fontSize: '0.65rem', color: currentTheme?.colors?.textSecondary, fontWeight: '600' }}>
-                            {chat.time}
-                          </span>
-                        </div>
-                        <div style={{ fontWeight: '700', fontSize: '0.875rem', marginBottom: '2px', color: currentTheme?.colors?.textPrimary, textTransform: 'uppercase' }}>{chat.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: currentTheme?.colors?.primary, fontWeight: '700', marginBottom: '8px' }}>{chat.phone}</div>
-                        <div style={{ 
-                          fontSize: '0.8125rem', 
-                          color: currentTheme?.colors?.textSecondary, 
-                          lineHeight: '1.4',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          marginBottom: '14px' 
-                        }}>
-                          {chat.lastMessage}
-                        </div>
-                        <button 
-                          onClick={() => {
-                            setSelectedChat(chat)
-                            setActiveSidebar('mine')
-                            notify.info('Atendimento Iniciado', `Iniciando chat com ${chat.name}`)
-                          }}
-                          style={{
-                            width: '100%',
-                            height: '36px',
-                            borderRadius: '4px',
-                            backgroundColor: currentTheme?.colors?.primary,
-                            color: '#ffffff',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                        >
-                          <Send size={14} /> Atender
-                        </button>
+                    {mockConversations.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', color: currentTheme?.colors?.textSecondary, fontSize: '0.8125rem' }}>
+                        Nenhum atendimento na fila no momento.
                       </div>
-                    ))}
+                    ) : (
+                      mockConversations.map((chat, index) => (
+                        <div 
+                          key={chat.id} 
+                          style={{ 
+                            padding: '16px', 
+                            borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
+                            backgroundColor: 'transparent',
+                            transition: 'background-color 0.2s ease',
+                            cursor: 'default'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <span style={{ 
+                              fontSize: '0.6rem', 
+                              fontWeight: '800', 
+                              color: currentTheme?.colors?.primary, 
+                              backgroundColor: currentTheme?.colors?.primary + '15', 
+                              padding: '3px 8px', 
+                              borderRadius: '4px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}>
+                              #{index + 1} NA FILA
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: currentTheme?.colors?.textSecondary, fontWeight: '600' }}>
+                              {chat.time}
+                            </span>
+                          </div>
+                          <div style={{ fontWeight: '700', fontSize: '0.875rem', marginBottom: '2px', color: currentTheme?.colors?.textPrimary, textTransform: 'uppercase' }}>{chat.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: currentTheme?.colors?.primary, fontWeight: '700', marginBottom: '8px' }}>{chat.phone}</div>
+                          <div style={{ 
+                            fontSize: '0.8125rem', 
+                            color: currentTheme?.colors?.textSecondary, 
+                            lineHeight: '1.4',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            marginBottom: '14px' 
+                          }}>
+                            {chat.lastMessage}
+                          </div>
+                          <button 
+                            onClick={() => {
+                              setSelectedChat(chat)
+                              setActiveSidebar('mine')
+                              notify.info('Atendimento Iniciado', `Iniciando chat com ${chat.name}`)
+                            }}
+                            style={{
+                              width: '100%',
+                              height: '36px',
+                              borderRadius: '4px',
+                              backgroundColor: currentTheme?.colors?.primary,
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: '0.75rem',
+                              fontWeight: '700',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                          >
+                            <Send size={14} /> Atender
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
 
@@ -455,43 +443,49 @@ export default function AtendimentoList() {
                     }}>
                       Meus Atendimentos
                     </div>
-                    {mockConversations.slice(0, 2).map(chat => (
-                      <div 
-                        key={chat.id} 
-                        onClick={() => setSelectedChat(chat)}
-                        style={{ 
-                          padding: '16px', 
-                          borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
-                          cursor: 'pointer', 
-                          backgroundColor: selectedChat.id === chat.id ? currentTheme?.colors?.primary + '15' : 'transparent', 
-                          transition: 'all 0.2s ease',
-                          position: 'relative'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (selectedChat.id !== chat.id) e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selectedChat.id !== chat.id) e.currentTarget.style.backgroundColor = 'transparent'
-                        }}
-                      >
-                        {selectedChat.id === chat.id && (
-                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', backgroundColor: currentTheme?.colors?.primary }} />
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <div style={{ fontWeight: '700', fontSize: '0.875rem', color: currentTheme?.colors?.textPrimary, textTransform: 'uppercase' }}>{chat.name}</div>
-                          <span style={{ fontSize: '0.65rem', color: currentTheme?.colors?.textSecondary, fontWeight: '600' }}>{chat.time}</span>
-                        </div>
-                        <div style={{ 
-                          fontSize: '0.8125rem', 
-                          color: currentTheme?.colors?.textSecondary, 
-                          whiteSpace: 'nowrap', 
-                          overflow: 'hidden', 
-                          textOverflow: 'ellipsis' 
-                        }}>
-                          {chat.lastMessage}
-                        </div>
+                    {mockConversations.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', color: currentTheme?.colors?.textSecondary, fontSize: '0.8125rem' }}>
+                        Nenhum atendimento ativo no momento.
                       </div>
-                    ))}
+                    ) : (
+                      mockConversations.map(chat => (
+                        <div 
+                          key={chat.id} 
+                          onClick={() => setSelectedChat(chat)}
+                          style={{ 
+                            padding: '16px', 
+                            borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
+                            cursor: 'pointer', 
+                            backgroundColor: selectedChat?.id === chat.id ? currentTheme?.colors?.primary + '15' : 'transparent', 
+                            transition: 'all 0.2s ease',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedChat?.id !== chat.id) e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedChat?.id !== chat.id) e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                        >
+                          {selectedChat?.id === chat.id && (
+                            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', backgroundColor: currentTheme?.colors?.primary }} />
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: '700', fontSize: '0.875rem', color: currentTheme?.colors?.textPrimary, textTransform: 'uppercase' }}>{chat.name}</div>
+                            <span style={{ fontSize: '0.65rem', color: currentTheme?.colors?.textSecondary, fontWeight: '600' }}>{chat.time}</span>
+                          </div>
+                          <div style={{ 
+                            fontSize: '0.8125rem', 
+                            color: currentTheme?.colors?.textSecondary, 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis' 
+                          }}>
+                            {chat.lastMessage}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
 
@@ -514,37 +508,43 @@ export default function AtendimentoList() {
                       </button>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {contacts.map(contact => (
-                        <div key={contact.id} style={{ 
-                          padding: '16px', 
-                          borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          transition: 'background-color 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: '700', color: currentTheme?.colors?.textPrimary, fontSize: '0.8125rem', textTransform: 'uppercase' }}>{contact.name}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                              <Phone size={12} color={currentTheme?.colors?.textSecondary} />
-                              <span style={{ fontSize: '0.75rem', color: currentTheme?.colors?.textSecondary, fontWeight: '500' }}>{contact.phone}</span>
-                            </div>
-                            {contact.email && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                                <Mail size={12} color={currentTheme?.colors?.textSecondary} />
-                                <span style={{ fontSize: '0.75rem', color: currentTheme?.colors?.textSecondary }}>{contact.email}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button onClick={() => handleContactAction('edit', contact)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: currentTheme?.colors?.textSecondary, padding: '4px' }}><Edit size={14} /></button>
-                            <button onClick={() => handleContactAction('delete', contact)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: currentTheme?.colors?.error, padding: '4px' }}><Trash2 size={14} /></button>
-                          </div>
+                      {contacts.length === 0 ? (
+                        <div style={{ padding: '32px 16px', textAlign: 'center', color: currentTheme?.colors?.textSecondary, fontSize: '0.8125rem' }}>
+                          Nenhum contato cadastrado.
                         </div>
-                      ))}
+                      ) : (
+                        contacts.map(contact => (
+                          <div key={contact.id} style={{ 
+                            padding: '16px', 
+                            borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            transition: 'background-color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '700', color: currentTheme?.colors?.textPrimary, fontSize: '0.8125rem', textTransform: 'uppercase' }}>{contact.name}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                <Phone size={12} color={currentTheme?.colors?.textSecondary} />
+                                <span style={{ fontSize: '0.75rem', color: currentTheme?.colors?.textSecondary, fontWeight: '500' }}>{contact.phone}</span>
+                              </div>
+                              {contact.email && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                                  <Mail size={12} color={currentTheme?.colors?.textSecondary} />
+                                  <span style={{ fontSize: '0.75rem', color: currentTheme?.colors?.textSecondary }}>{contact.email}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button onClick={() => handleContactAction('edit', contact)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: currentTheme?.colors?.textSecondary, padding: '4px' }}><Edit size={14} /></button>
+                              <button onClick={() => handleContactAction('delete', contact)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: currentTheme?.colors?.error, padding: '4px' }}><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
@@ -563,24 +563,8 @@ export default function AtendimentoList() {
                     }}>
                       Histórico de Atendimentos
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(i => (
-                        <div 
-                          key={i} 
-                          style={{ 
-                            padding: '16px', 
-                            borderBottom: `1px solid ${currentTheme?.colors?.border}`, 
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <div style={{ fontWeight: '700', color: currentTheme?.colors?.textPrimary, fontSize: '0.8125rem', textTransform: 'uppercase', marginBottom: '2px' }}>Beneficiário #{1000 + i}</div>
-                          <div style={{ fontSize: '0.75rem', color: currentTheme?.colors?.primary, fontWeight: '700' }}>(11) 9{i}{i}{i}{i}-{i}{i}{i}{i}</div>
-                          <div style={{ color: currentTheme?.colors?.textSecondary, fontSize: '0.65rem', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase' }}>Atendimento #2938{i} • 18/09/2026</div>
-                        </div>
-                      ))}
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: currentTheme?.colors?.textSecondary, fontSize: '0.8125rem' }}>
+                      Nenhum histórico de atendimento registrado.
                     </div>
                   </div>
                 )}
