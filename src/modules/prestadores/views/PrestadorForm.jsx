@@ -1,13 +1,13 @@
 // Arquivo: src/modules/prestadores/views/PrestadorForm.jsx
 // Descrição: Formulário de cadastro e edição de Prestadores e Pessoas (M04_PRESTADORES / M01_PESSOAS).
-// Alinhado com as exigências regulatórias da ANS, TISS e SIB, com suporte a UUIDv7 e sincronização.
+// Alinhado com as exigências regulatórias da ANS, TISS e SIB, com suporte a UUIDv7 e serviços SQLite da pasta services/.
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Button } from '@shared/layout'
 import { useTheme, useNotification } from '@shared/context'
-import { fetchPrestadoresFromSheets, savePrestadorToSheets } from '../services/sheetsService'
 import { generateUUIDv7 } from '@shared/utils/uuidv7'
+import { getPrestadorById, savePrestador } from '../services'
 import { ArrowLeft, Save, Building2, User, Stethoscope, MapPin, ShieldCheck, RefreshCw } from 'lucide-react'
 
 export default function PrestadorForm() {
@@ -25,8 +25,22 @@ export default function PrestadorForm() {
     id: id || generateUUIDv7(),
     id_pessoa: generateUUIDv7(),
     tipo_pessoa: 'JURÍDICA',
+    crm: '',
+    nome: '',
+    especialidade: 'CLÍNICA GERAL',
+    atendimento: 'Presencial',
+    idade: 'Todas as idades',
+    atendimento_idade: 'Todas as idades',
+    estrutura: 'CONSULTÓRIO',
+    unidade: 'UNIDADE PRINCIPAL',
+    credenciado: 'Sim',
+    contrato_ativo: 'Sim',
+    contrato_desativado: 'Não',
+    estado: 'SP',
+    municipio_endereco: '',
+    numero_endereco: '',
     nome_razao_social: '',
-    nome_fantasia: '',
+    nome_fantasia: 'UNIDADE PRINCIPAL',
     cpf_cnpj: '',
     data_nascimento_fundacao: '',
     sexo: '',
@@ -35,7 +49,7 @@ export default function PrestadorForm() {
     telefone_principal: '',
     inscricao_estadual: '',
     inscricao_municipal: '',
-    tipo_prestador: 'CLÍNICA',
+    tipo_prestador: 'CONSULTÓRIO',
     conselho_profissional: 'CRM',
     numero_conselho: '',
     uf_conselho: 'SP',
@@ -46,9 +60,9 @@ export default function PrestadorForm() {
     status_credenciamento: 'ATIVO',
     data_credenciamento: new Date().toISOString().slice(0, 10),
     data_descredenciamento: '',
-    especialidade: 'CLÍNICA GERAL',
     rqe: '',
     logradouro: '',
+    endereco: '',
     numero: '',
     complemento: '',
     bairro: '',
@@ -66,21 +80,45 @@ export default function PrestadorForm() {
     const loadPrestador = async () => {
       setLoading(true)
       try {
-        const result = await fetchPrestadoresFromSheets()
+        const found = await getPrestadorById(id)
         if (!isMounted) return
 
-        const found = (result.data || []).find(p =>
-          String(p.id).toLowerCase() === String(id).toLowerCase() ||
-          String(p.codigo_operadora_prestador || '').toLowerCase() === String(id).toLowerCase()
-        )
-
         if (found) {
+          const crmVal = found.crm || found.numero_conselho || ''
+          const nomeVal = found.nome || found.nome_razao_social || ''
+          const espVal = found.especialidade || found.cbos || 'CLÍNICA GERAL'
+          const atenVal = found.atendimento || found.modalidade_atendimento || 'Presencial'
+          const idaVal = found.idade || found.atendimento_idade || found.faixa_etaria || 'Todas as idades'
+          const estVal = found.estrutura || found.tipo_prestador || 'CONSULTÓRIO'
+          const uniVal = found.unidade || found.nome_fantasia || 'UNIDADE PRINCIPAL'
+          const ufVal = (found.estado || found.uf || found.uf_conselho || 'SP').toUpperCase()
+          const munVal = found.municipio || found.cidade || 'SÃO PAULO'
+          const endVal = found.endereco || found.logradouro || ''
+          const numVal = found.numero_endereco || found.numero || ''
+          const credVal = found.credenciado || (found.status_credenciamento === 'DESCREDENCIADO' ? 'Não' : 'Sim')
+          const ctAtivoVal = found.contrato_ativo || (found.status_credenciamento === 'ATIVO' && !found.data_descredenciamento ? 'Sim' : 'Não')
+          const ctDesatVal = found.contrato_desativado || (found.data_descredenciamento ? 'Sim' : 'Não')
+
           setFormData({
             id: found.id,
             id_pessoa: found.id_pessoa || generateUUIDv7(),
             tipo_pessoa: found.tipo_pessoa || (found.tipo_prestador === 'MÉDICO' ? 'FÍSICA' : 'JURÍDICA'),
-            nome_razao_social: found.nome_razao_social || found.nome || '',
-            nome_fantasia: found.nome_fantasia || '',
+            crm: crmVal,
+            nome: nomeVal,
+            especialidade: espVal,
+            atendimento: atenVal,
+            idade: idaVal,
+            atendimento_idade: idaVal,
+            estrutura: estVal,
+            unidade: uniVal,
+            credenciado: credVal,
+            contrato_ativo: ctAtivoVal,
+            contrato_desativado: ctDesatVal,
+            estado: ufVal,
+            municipio_endereco: found.municipio_endereco || (munVal && endVal ? `${munVal}, ${endVal}` : munVal || endVal),
+            numero_endereco: numVal,
+            nome_razao_social: nomeVal,
+            nome_fantasia: uniVal,
             cpf_cnpj: found.cpf_cnpj || '',
             data_nascimento_fundacao: found.data_nascimento_fundacao || '',
             sexo: found.sexo || '',
@@ -89,26 +127,26 @@ export default function PrestadorForm() {
             telefone_principal: found.telefone_principal || '',
             inscricao_estadual: found.inscricao_estadual || '',
             inscricao_municipal: found.inscricao_municipal || '',
-            tipo_prestador: found.tipo_prestador || 'CLÍNICA',
+            tipo_prestador: estVal,
             conselho_profissional: found.conselho_profissional || 'CRM',
-            numero_conselho: found.numero_conselho || '',
-            uf_conselho: found.uf_conselho || found.uf || 'SP',
-            cbos: found.cbos || '',
+            numero_conselho: crmVal,
+            uf_conselho: ufVal,
+            cbos: found.cbos || espVal,
             codigo_operadora_prestador: found.codigo_operadora_prestador || '',
             cnes_principal: found.cnes_principal || '',
             regime_tributario: found.regime_tributario || 'SIMPLES NACIONAL',
             status_credenciamento: found.status_credenciamento || 'ATIVO',
             data_credenciamento: found.data_credenciamento || '',
             data_descredenciamento: found.data_descredenciamento || '',
-            especialidade: found.especialidade || '',
             rqe: found.rqe || '',
-            logradouro: found.logradouro || '',
-            numero: found.numero || '',
+            logradouro: endVal,
+            endereco: endVal,
+            numero: numVal,
             complemento: found.complemento || '',
             bairro: found.bairro || '',
-            municipio: found.municipio || found.cidade || '',
-            cidade: found.cidade || found.municipio || '',
-            uf: found.uf || 'SP',
+            municipio: munVal,
+            cidade: munVal,
+            uf: ufVal,
             cep: found.cep || ''
           })
         } else {
@@ -137,18 +175,81 @@ export default function PrestadorForm() {
         ...prev,
         tipo_pessoa: value,
         tipo_prestador: value === 'FÍSICA' ? 'MÉDICO' : (prev.tipo_prestador === 'MÉDICO' ? 'CLÍNICA' : prev.tipo_prestador),
+        estrutura: value === 'FÍSICA' ? 'CONSULTÓRIO' : prev.estrutura,
         regime_tributario: value === 'FÍSICA' ? 'PESSOA FÍSICA' : 'SIMPLES NACIONAL'
       }))
       return
     }
 
     // Se o tipo de prestador for alterado para MÉDICO, ajusta tipo de pessoa
-    if (name === 'tipo_prestador' && value === 'MÉDICO') {
-      setFormData(prev => ({ ...prev, [name]: value, tipo_pessoa: 'FÍSICA', regime_tributario: 'PESSOA FÍSICA' }))
+    if ((name === 'tipo_prestador' || name === 'estrutura') && (value === 'MÉDICO' || value === 'CONSULTÓRIO')) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        tipo_prestador: value,
+        estrutura: value,
+        ...(value === 'MÉDICO' ? { tipo_pessoa: 'FÍSICA', regime_tributario: 'PESSOA FÍSICA' } : {})
+      }))
       return
     }
 
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'crm') next.numero_conselho = value
+      if (name === 'numero_conselho') next.crm = value
+      if (name === 'nome') next.nome_razao_social = value
+      if (name === 'nome_razao_social') next.nome = value
+      if (name === 'unidade') next.nome_fantasia = value
+      if (name === 'nome_fantasia') next.unidade = value
+      if (name === 'estrutura') next.tipo_prestador = value
+      if (name === 'tipo_prestador') next.estrutura = value
+      if (name === 'idade') next.atendimento_idade = value
+      if (name === 'atendimento_idade') next.idade = value
+
+      if (name === 'status_credenciamento') {
+        if (value === 'DESCREDENCIADO') {
+          next.credenciado = 'Não'
+          next.contrato_ativo = 'Não'
+          next.contrato_desativado = 'Sim'
+        } else if (value === 'ATIVO') {
+          next.credenciado = 'Sim'
+          next.contrato_ativo = 'Sim'
+          next.contrato_desativado = 'Não'
+        }
+      }
+
+      if (name === 'credenciado') {
+        if (value === 'Não') {
+          next.status_credenciamento = 'DESCREDENCIADO'
+          next.contrato_ativo = 'Não'
+          next.contrato_desativado = 'Sim'
+        } else {
+          next.status_credenciamento = 'ATIVO'
+          next.contrato_ativo = 'Sim'
+          next.contrato_desativado = 'Não'
+        }
+      }
+
+      if (name === 'estado') {
+        next.uf = value
+        next.uf_conselho = value
+      }
+      if (name === 'uf') {
+        next.estado = value
+        next.uf_conselho = value
+      }
+      if (name === 'numero') next.numero_endereco = value
+      if (name === 'numero_endereco') next.numero = value
+      if (name === 'logradouro') next.endereco = value
+      if (name === 'endereco') next.logradouro = value
+      if (name === 'cidade') next.municipio = value
+      if (name === 'municipio') next.cidade = value
+
+      const mun = next.municipio || next.cidade || ''
+      const end = next.endereco || next.logradouro || ''
+      next.municipio_endereco = mun && end ? `${mun}, ${end}` : mun || end
+      return next
+    })
   }
 
   // Formatação simples de CPF / CNPJ
@@ -185,16 +286,47 @@ export default function PrestadorForm() {
 
     setSaving(true)
     try {
-      const result = await savePrestadorToSheets(formData)
+      const isNew = !isEdit
+      const prestadorId = isNew ? generateUUIDv7() : formData.id
+      const pessoaId = formData.id_pessoa || generateUUIDv7()
+      const nowIso = new Date().toISOString()
 
-      if (result.success) {
+      const normalized = {
+        ...formData,
+        id: prestadorId,
+        id_pessoa: pessoaId,
+        nome: formData.nome_razao_social || formData.nome,
+        nome_razao_social: formData.nome_razao_social || formData.nome,
+        unidade: formData.nome_fantasia || formData.unidade || 'UNIDADE PRINCIPAL',
+        nome_fantasia: formData.nome_fantasia || formData.unidade || 'UNIDADE PRINCIPAL',
+        crm: formData.crm || formData.numero_conselho || '',
+        numero_conselho: formData.crm || formData.numero_conselho || '',
+        especialidade: formData.especialidade || formData.cbos || 'CLÍNICA GERAL',
+        cbos: formData.cbos || formData.especialidade || 'CLÍNICA GERAL',
+        estrutura: formData.estrutura || formData.tipo_prestador || 'CONSULTÓRIO',
+        tipo_prestador: formData.estrutura || formData.tipo_prestador || 'CONSULTÓRIO',
+        estado: (formData.estado || formData.uf || 'SP').toUpperCase(),
+        uf: (formData.estado || formData.uf || 'SP').toUpperCase(),
+        uf_conselho: (formData.estado || formData.uf || 'SP').toUpperCase(),
+        municipio: formData.municipio || formData.cidade || 'SÃO PAULO',
+        cidade: formData.municipio || formData.cidade || 'SÃO PAULO',
+        endereco: formData.endereco || formData.logradouro || '',
+        logradouro: formData.endereco || formData.logradouro || '',
+        numero_endereco: formData.numero_endereco || formData.numero || 'S/N',
+        numero: formData.numero_endereco || formData.numero || 'S/N',
+        created_at: formData.created_at || nowIso,
+        updated_at: nowIso
+      }
+
+      const res = await savePrestador(normalized)
+      if (res.success) {
         notify.success(
           isEdit ? 'Prestador Atualizado!' : 'Prestador Cadastrado!',
-          result.message
+          `Prestador ${normalized.nome_razao_social || normalized.nome} salvo com sucesso no banco de dados SQLite.`
         )
         navigate('/prestadores')
       } else {
-        notify.error('Erro ao Salvar', result.syncError || 'Não foi possível salvar o prestador.')
+        notify.error('Erro no Cadastro', res.error || 'Falha ao salvar dados do prestador.')
       }
     } catch (err) {
       console.error('Erro ao salvar prestador:', err)
@@ -269,7 +401,7 @@ export default function PrestadorForm() {
                 {isEdit ? `Editar Prestador: ${formData.nome_razao_social}` : 'Novo Prestador da Operadora'}
               </h1>
               <p style={{ fontSize: '0.8125rem', color: currentTheme?.colors?.textSecondary || '#6b7280', margin: '0.2rem 0 0' }}>
-                Módulos M04_PRESTADORES e M01_PESSOAS — Padrão ANS / TISS
+                Cadastro e Credenciamento — Padrão ANS / TISS
               </p>
             </div>
           </div>
@@ -286,7 +418,7 @@ export default function PrestadorForm() {
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Seção 1: Identificação da Pessoa / Entidade (M01_PESSOAS) */}
+          {/* Seção 1: Identificação da Pessoa / Entidade */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               {formData.tipo_pessoa === 'FÍSICA' ? (
@@ -294,7 +426,7 @@ export default function PrestadorForm() {
               ) : (
                 <Building2 size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
               )}
-              <span>1. Identificação da Pessoa / Entidade (M01_PESSOAS)</span>
+              <span>1. Identificação do Prestador</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
@@ -494,11 +626,11 @@ export default function PrestadorForm() {
             </div>
           </Card>
 
-          {/* Seção 2: Credenciamento e Dados Regulatórios (M04_PRESTADORES) */}
+          {/* Seção 2: Credenciamento e Dados Regulatórios */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               <ShieldCheck size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
-              <span>2. Credenciamento e Regulação ANS (M04_PRESTADORES)</span>
+              <span>2. Credenciamento e Regulação ANS</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
@@ -537,6 +669,31 @@ export default function PrestadorForm() {
                   <option value="EM CREDENCIAMENTO">EM CREDENCIAMENTO</option>
                   <option value="SUSPENSO">SUSPENSO</option>
                   <option value="DESCREDENCIADO">DESCREDENCIADO</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Credenciado</label>
+                <select name="credenciado" value={formData.credenciado} onChange={handleChange} style={inputStyle}>
+                  <option value="Sim">Sim</option>
+                  <option value="Não">Não</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Contrato Ativo</label>
+                <select name="contrato_ativo" value={formData.contrato_ativo} onChange={handleChange} style={inputStyle}>
+                  <option value="Sim">Sim</option>
+                  <option value="Não">Não</option>
+                  <option value="Suspenso">Suspenso</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Contrato Desativado</label>
+                <select name="contrato_desativado" value={formData.contrato_desativado} onChange={handleChange} style={inputStyle}>
+                  <option value="Não">Não</option>
+                  <option value="Sim">Sim</option>
                 </select>
               </div>
 
@@ -627,14 +784,14 @@ export default function PrestadorForm() {
             </div>
           </Card>
 
-          {/* Seção 3: Especialidades Médicas (M04_PRESTADORES_ESPECIALIDADES) */}
+          {/* Seção 3: Especialidades Médicas */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               <Stethoscope size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
-              <span>3. Especialidade e Qualificação (M04_PRESTADORES_ESPECIALIDADES)</span>
+              <span>3. Especialidade e Qualificação</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
               <div>
                 <label style={labelStyle}>Especialidade Principal</label>
                 <input
@@ -645,6 +802,29 @@ export default function PrestadorForm() {
                   placeholder="EX: CARDIOLOGIA, CLÍNICA MÉDICA, PEDIATRIA"
                   style={inputStyle}
                 />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Atendimento (Modalidade)</label>
+                <select name="atendimento" value={formData.atendimento} onChange={handleChange} style={inputStyle}>
+                  <option value="Presencial">Presencial</option>
+                  <option value="Telemedicina">Telemedicina</option>
+                  <option value="Ambulatorial">Ambulatorial</option>
+                  <option value="Pronto Atendimento">Pronto Atendimento</option>
+                  <option value="Domiciliar">Domiciliar</option>
+                  <option value="Misto (Presencial e Telemedicina)">Misto (Presencial e Telemedicina)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Idade (Faixa Etária Atendida)</label>
+                <select name="idade" value={formData.idade} onChange={handleChange} style={inputStyle}>
+                  <option value="Todas as idades">Todas as idades</option>
+                  <option value="Adulto">Adulto</option>
+                  <option value="Pediátrico">Pediátrico</option>
+                  <option value="Geriátrico">Geriátrico</option>
+                  <option value="Adulto e Pediátrico">Adulto e Pediátrico</option>
+                </select>
               </div>
 
               <div>
@@ -661,11 +841,11 @@ export default function PrestadorForm() {
             </div>
           </Card>
 
-          {/* Seção 4: Localização e Endereço do Estabelecimento (M01_PESSOAS_ENDERECOS) */}
+          {/* Seção 4: Localização e Endereço do Estabelecimento */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               <MapPin size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
-              <span>4. Endereço do Estabelecimento (M01_PESSOAS_ENDERECOS)</span>
+              <span>4. Endereço e Localização</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px', gap: '1rem', marginBottom: '1rem' }}>

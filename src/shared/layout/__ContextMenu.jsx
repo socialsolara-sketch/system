@@ -10,6 +10,7 @@ export default function ContextMenu({
   visible = false,
   onClose,
   onView,
+  onViewAcordos,
   onEdit,
   onDelete,
   itemTitle = ''
@@ -57,8 +58,8 @@ export default function ContextMenu({
   const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1000
   const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800
 
-  const menuWidth = 180
-  const menuHeight = 160
+  const menuWidth = 190
+  const menuHeight = 200
 
   const adjustedX = x + menuWidth > windowWidth ? Math.max(10, windowWidth - menuWidth - 15) : x
   const adjustedY = y + menuHeight > windowHeight ? Math.max(10, y - menuHeight) : y
@@ -143,6 +144,31 @@ export default function ContextMenu({
             <circle cx="12" cy="12" r="3" />
           </svg>
           <span>Visualizar</span>
+        </button>
+      )}
+
+      {onViewAcordos && (
+        <button
+          onClick={() => {
+            onViewAcordos()
+            onClose && onClose()
+          }}
+          style={itemStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = hoverBgColor
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent'
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={currentTheme?.colors?.primary || (isDark ? '#60a5fa' : '#2563eb')} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span style={{ fontWeight: '600' }}>Ver Acordos</span>
         </button>
       )}
 

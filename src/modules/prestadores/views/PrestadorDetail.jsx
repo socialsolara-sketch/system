@@ -1,13 +1,13 @@
 // Arquivo: src/modules/prestadores/views/PrestadorDetail.jsx
 // Descrição: Visão de detalhes completa do Prestador, integrando dados de M04_PRESTADORES e M01_PESSOAS.
-// Suporta visualização de conformidade regulatória ANS/TISS e exclusão com ConfirmationModal.
+// Suporta visualização de conformidade regulatória ANS/TISS e exclusão com serviços SQLite da pasta services/.
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Button, ConfirmationModal } from '@shared/layout'
 import { useTheme, useNotification } from '@shared/context'
-import { fetchPrestadoresFromSheets, deletePrestadorFromSheets } from '../services/sheetsService'
-import { ArrowLeft, Edit, Trash2, Building2, User, Stethoscope, MapPin, ShieldCheck, Hash, Calendar, FileText } from 'lucide-react'
+import { getPrestadorById, deletePrestador } from '../services'
+import { ArrowLeft, Edit, Trash2, Building2, User, Stethoscope, MapPin, ShieldCheck, Hash, Calendar, FileText, FileSpreadsheet } from 'lucide-react'
 
 export default function PrestadorDetail() {
   const { id } = useParams()
@@ -25,19 +25,15 @@ export default function PrestadorDetail() {
     const loadPrestador = async () => {
       setLoading(true)
       try {
-        const result = await fetchPrestadoresFromSheets()
+        const found = await getPrestadorById(id)
         if (!isMounted) return
-
-        const found = (result.data || []).find(p =>
-          String(p.id).toLowerCase() === String(id).toLowerCase() ||
-          String(p.codigo_operadora_prestador || '').toLowerCase() === String(id).toLowerCase() ||
-          String(p.nome) === String(id)
-        )
         setPrestador(found || null)
       } catch (err) {
         console.error('Erro ao carregar detalhes do prestador:', err)
       } finally {
-        if (isMounted) setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
     loadPrestador()
@@ -48,9 +44,13 @@ export default function PrestadorDetail() {
     if (!prestador?.id) return
     setDeleting(true)
     try {
-      await deletePrestadorFromSheets(prestador.id)
-      notify.success('Prestador Excluído!', `O prestador ${prestador.nome_razao_social || prestador.nome} foi removido da rede credenciada.`)
-      navigate('/prestadores')
+      const res = await deletePrestador(prestador.id)
+      if (res.success) {
+        notify.success('Prestador Excluído!', `O prestador ${prestador.nome_razao_social || prestador.nome} foi removido da rede credenciada.`)
+        navigate('/prestadores')
+      } else {
+        notify.error('Erro ao Excluir', res.error || 'Falha na exclusão do prestador.')
+      }
     } catch (err) {
       console.error('Erro ao excluir prestador:', err)
       notify.error('Erro ao Excluir', err.message || 'Falha na exclusão do prestador.')
@@ -170,7 +170,15 @@ export default function PrestadorDetail() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/prestadores/${prestador.id}/acordos`)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700', color: currentTheme?.colors?.primary || '#2563eb' }}
+            >
+              <FileSpreadsheet size={16} />
+              Ver Acordos TUSS
+            </Button>
             <Button
               variant="secondary"
               onClick={() => setIsDeleteModalOpen(true)}
@@ -198,7 +206,7 @@ export default function PrestadorDetail() {
               ) : (
                 <Building2 size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
               )}
-              <span>Identificação da Entidade / Pessoa (M01_PESSOAS)</span>
+              <span>Identificação do Prestador</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -265,14 +273,36 @@ export default function PrestadorDetail() {
             </div>
           </Card>
 
-          {/* 2. Credenciamento e Dados Regulatórios (M04_PRESTADORES) */}
+          {/* 2. Credenciamento e Dados Regulatórios */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               <ShieldCheck size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
-              <span>Credenciamento e Regulação ANS (M04_PRESTADORES)</span>
+              <span>Credenciamento e Regulação ANS</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>CRM / Conselho Profissional</span>
+                <span style={{ ...valueStyle, fontWeight: '700' }}>
+                  {prestador.crm || prestador.numero_conselho ? `${prestador.conselho_profissional || 'CRM'} ${prestador.crm || prestador.numero_conselho}${prestador.estado || prestador.uf ? `/${prestador.estado || prestador.uf}` : ''}` : '-'}
+                </span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Estrutura</span>
+                <span style={valueStyle}>{prestador.estrutura || prestador.tipo_prestador || 'CONSULTÓRIO'}</span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Unidade</span>
+                <span style={valueStyle}>{prestador.unidade || prestador.nome_fantasia || 'UNIDADE PRINCIPAL'}</span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Atendimento Idade</span>
+                <span style={valueStyle}>{prestador.atendimento_idade || 'TODAS AS IDADES'}</span>
+              </div>
+
               <div style={dataBoxStyle}>
                 <span style={labelStyle}>Código Operadora (RDA)</span>
                 <span style={{ ...valueStyle, fontFamily: 'monospace' }}>
@@ -281,8 +311,24 @@ export default function PrestadorDetail() {
               </div>
 
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>Tipo de Prestador</span>
-                <span style={valueStyle}>{prestador.tipo_prestador || 'CLÍNICA'}</span>
+                <span style={labelStyle}>Credenciado</span>
+                <span style={{ ...valueStyle, fontWeight: '700', color: (prestador.credenciado === 'Não' || statusCred === 'DESCREDENCIADO') ? '#dc2626' : '#16a34a' }}>
+                  {prestador.credenciado || (statusCred === 'DESCREDENCIADO' ? 'Não' : 'Sim')}
+                </span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Contrato Ativo</span>
+                <span style={{ ...valueStyle, fontWeight: '700', color: (prestador.contrato_ativo === 'Sim' || (isAtivo && !prestador.data_descredenciamento)) ? '#16a34a' : '#dc2626' }}>
+                  {prestador.contrato_ativo || (isAtivo && !prestador.data_descredenciamento ? 'Sim' : 'Não')}
+                </span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Contrato Desativado</span>
+                <span style={{ ...valueStyle, fontWeight: '700', color: (prestador.contrato_desativado === 'Sim' || prestador.data_descredenciamento) ? '#dc2626' : '#737373' }}>
+                  {prestador.contrato_desativado || (prestador.data_descredenciamento ? 'Sim' : 'Não')}
+                </span>
               </div>
 
               <div style={dataBoxStyle}>
@@ -303,41 +349,33 @@ export default function PrestadorDetail() {
               </div>
 
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>Conselho Profissional</span>
-                <span style={valueStyle}>
-                  {prestador.conselho_profissional || 'CRM'} {prestador.numero_conselho || ''}
-                  {prestador.uf_conselho ? `/${prestador.uf_conselho}` : ''}
-                </span>
-              </div>
-
-              <div style={dataBoxStyle}>
-                <span style={labelStyle}>CBOS (Ocupação Padrão TISS)</span>
-                <span style={valueStyle}>{prestador.cbos || '-'}</span>
-              </div>
-
-              <div style={dataBoxStyle}>
-                <span style={labelStyle}>CNES Principal (Estabelecimento)</span>
+                <span style={labelStyle}>CNES Principal</span>
                 <span style={{ ...valueStyle, fontFamily: 'monospace' }}>{prestador.cnes_principal || '-'}</span>
-              </div>
-
-              <div style={dataBoxStyle}>
-                <span style={labelStyle}>Regime Tributário</span>
-                <span style={valueStyle}>{prestador.regime_tributario || 'SIMPLES NACIONAL'}</span>
               </div>
             </div>
           </Card>
 
-          {/* 3. Especialidades e Qualificação (M04_PRESTADORES_ESPECIALIDADES) */}
+          {/* 3. Especialidades e Atendimento */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               <Stethoscope size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
-              <span>Especialidades Médicas (M04_PRESTADORES_ESPECIALIDADES)</span>
+              <span>Especialidades e Modalidades de Atendimento</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
               <div style={dataBoxStyle}>
                 <span style={labelStyle}>Especialidade Principal</span>
-                <span style={valueStyle}>{prestador.especialidade || 'CLÍNICA GERAL'}</span>
+                <span style={valueStyle}>{prestador.especialidade || prestador.cbos || 'CLÍNICA GERAL'}</span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Atendimento</span>
+                <span style={valueStyle}>{prestador.atendimento || prestador.modalidade_atendimento || 'Presencial'}</span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Idade (Faixa Etária)</span>
+                <span style={valueStyle}>{prestador.idade || prestador.atendimento_idade || prestador.faixa_etaria || 'Todas as idades'}</span>
               </div>
 
               <div style={dataBoxStyle}>
@@ -347,7 +385,7 @@ export default function PrestadorDetail() {
             </div>
           </Card>
 
-          {/* 4. Localização e Estabelecimento (M01_PESSOAS_ENDERECOS) */}
+          {/* 4. Localização e Estabelecimento */}
           <Card style={{ padding: '1.5rem' }}>
             <div style={sectionHeaderStyle}>
               <MapPin size={18} color={currentTheme?.colors?.textSecondary || (isDark ? '#a1a1aa' : '#6b7280')} />
@@ -356,22 +394,30 @@ export default function PrestadorDetail() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>Logradouro e Número</span>
+                <span style={labelStyle}>Município / Endereço</span>
                 <span style={valueStyle}>
-                  {prestador.logradouro ? `${prestador.logradouro}, ${prestador.numero || 'S/N'}` : '-'}
-                  {prestador.complemento ? ` (${prestador.complemento})` : ''}
+                  {prestador.municipio_endereco || (
+                    (prestador.municipio || prestador.cidade) && (prestador.endereco || prestador.logradouro)
+                      ? `${prestador.municipio || prestador.cidade}, ${prestador.endereco || prestador.logradouro}`
+                      : (prestador.municipio || prestador.cidade || prestador.endereco || prestador.logradouro || '-')
+                  )}
                 </span>
               </div>
 
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>Bairro</span>
-                <span style={valueStyle}>{prestador.bairro || '-'}</span>
+                <span style={labelStyle}>Número do Endereço</span>
+                <span style={valueStyle}>{prestador.numero_endereco || prestador.numero || 'S/N'}</span>
               </div>
 
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>Município / UF</span>
+                <span style={labelStyle}>Estado (UF)</span>
+                <span style={valueStyle}>{prestador.estado || prestador.uf || 'SP'}</span>
+              </div>
+
+              <div style={dataBoxStyle}>
+                <span style={labelStyle}>Complemento / Bairro</span>
                 <span style={valueStyle}>
-                  {prestador.cidade || prestador.municipio || 'SÃO PAULO'}/{prestador.uf || 'SP'}
+                  {[prestador.complemento, prestador.bairro].filter(Boolean).join(' - ') || '-'}
                 </span>
               </div>
 
@@ -391,12 +437,12 @@ export default function PrestadorDetail() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>ID Prestador (M04_PRESTADORES)</span>
+                <span style={labelStyle}>ID do Prestador</span>
                 <span style={{ ...valueStyle, fontFamily: 'monospace', fontSize: '0.8125rem' }}>{prestador.id}</span>
               </div>
 
               <div style={dataBoxStyle}>
-                <span style={labelStyle}>ID Pessoa (M01_PESSOAS)</span>
+                <span style={labelStyle}>ID da Pessoa</span>
                 <span style={{ ...valueStyle, fontFamily: 'monospace', fontSize: '0.8125rem' }}>{prestador.id_pessoa || '-'}</span>
               </div>
 

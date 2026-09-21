@@ -10,7 +10,7 @@ import { useActionLock } from '../context/ActionLockContext'
 // Componente Table
 // ==========================================
 
-export default function Table({ columns = [], data = [], onRowClick, onRowContextMenu }) {
+export default function Table({ columns = [], data = [], onRowClick, onRowContextMenu, emptyMessage = 'Nenhum registro encontrado.' }) {
   const { currentTheme, isDark } = useTheme()
   const { isLocked, executeAction } = useActionLock()
 
@@ -33,7 +33,7 @@ export default function Table({ columns = [], data = [], onRowClick, onRowContex
 
   const headerBg = currentTheme
     ? (currentTheme.colors.surfaceMuted || currentTheme.colors.backgroundSecondary || currentTheme.colors.header)
-    : systemColors.neutral.gray50
+    : (isDark ? '#141416' : '#f8fafc')
   const rowHoverBg = currentTheme
     ? (currentTheme.colors.hover || 'rgba(255, 255, 255, 0.04)')
     : '#f8fafc'
@@ -264,7 +264,7 @@ export default function Table({ columns = [], data = [], onRowClick, onRowContex
                   border: `1px solid ${gridLineColor}`
                 }}
               >
-                Nenhum registro encontrado.
+                {emptyMessage}
               </td>
             </tr>
           ) : (

@@ -220,7 +220,7 @@ export function SystemSettings() {
             >
               {availableFonts.map((fontOption) => (
                 <option key={fontOption.id} value={fontOption.id}>
-                  {fontOption.name} ({fontOption.id === 'system' ? 'Nativa' : 'Google Fonts'})
+                  {fontOption.name} ({fontOption.id === 'system' ? 'Nativa' : 'Web'})
                 </option>
               ))}
             </select>
