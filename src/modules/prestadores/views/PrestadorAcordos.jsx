@@ -9,38 +9,14 @@ import { useTheme, useNotification, usePagination } from '@shared/context'
 import {
   getPrestadorById,
   fetchAcordosByPrestador,
-  saveAcordo,
-  deleteAcordo,
-  CATALOGO_TUSS_BASE
+  deleteAcordo
 } from '../services'
 import {
   Plus,
   RefreshCw,
   ChevronLeft,
-  Search,
-  X,
-  FilterX
+  Search
 } from 'lucide-react'
-
-const DEFAULT_FORM_DATA = {
-  codigo_tuss: '',
-  descricao: '',
-  nome: '',
-  grupo: 'Consultas Médicas',
-  rol_ans: true,
-  valor_referencia: 150.00,
-  valor_acordado: 150.00,
-  fator_ch: 40,
-  filme_porte: 0,
-  exige_autorizacao: false,
-  vigencia_inicio: '2025-01-01',
-  vigencia_fim: '2026-12-31',
-  acordo_data_inicio: '2025-01-01',
-  acordo_data_fim: '2026-12-31',
-  status: 'ATIVO',
-  regra_coparticipacao: 'Padrão da Operadora (20%)',
-  observacoes_acordo: ''
-}
 
 export default function PrestadorAcordos() {
   const { id } = useParams()
@@ -57,17 +33,9 @@ export default function PrestadorAcordos() {
   // Campo de busca rápida no Header
   const [searchTerm, setSearchTerm] = useState('')
 
-  // 5 Filtros Dedicados da Section (Baseados nas colunas da tabela prestadores_acordado)
-  const [filterCodigoTuss, setFilterCodigoTuss] = useState('')
-  const [filterNome, setFilterNome] = useState('')
+  // Filtros Dedicados da Section (Baseados nas colunas da tabela prestadores_acordado)
   const [filterDataInicio, setFilterDataInicio] = useState('')
   const [filterDataFim, setFilterDataFim] = useState('')
-  const [filterStatus, setFilterStatus] = useState('todos')
-
-  // Modais de Cadastro / Edição
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingAcordo, setEditingAcordo] = useState(null)
-  const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
 
   // Modal de Exclusão
   const [deleteModal, setDeleteModal] = useState({
@@ -91,8 +59,12 @@ export default function PrestadorAcordos() {
       const found = await getPrestadorById(id)
       setPrestador(found || null)
       if (found?.id) {
-        const acordosList = await fetchAcordosByPrestador(found.id)
-        setAcordos(acordosList)
+        const acordosRes = await fetchAcordosByPrestador(found.id)
+        if (acordosRes.success) {
+          setAcordos(acordosRes.data)
+        } else {
+          setAcordos([])
+        }
       } else {
         setAcordos([])
       }
@@ -113,8 +85,12 @@ export default function PrestadorAcordos() {
         if (isMounted) {
           setPrestador(found || null)
           if (found?.id) {
-            const acordosList = await fetchAcordosByPrestador(found.id)
-            if (isMounted) setAcordos(acordosList)
+            const acordosRes = await fetchAcordosByPrestador(found.id)
+            if (isMounted && acordosRes.success) {
+              setAcordos(acordosRes.data)
+            } else {
+              setAcordos([])
+            }
           } else {
             setAcordos([])
           }
@@ -138,68 +114,42 @@ export default function PrestadorAcordos() {
   // Verificação de Filtros Ativos
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
-    filterCodigoTuss.trim() ||
-    filterNome.trim() ||
     filterDataInicio.trim() ||
-    filterDataFim.trim() ||
-    filterStatus !== 'todos'
+    filterDataFim.trim()
   )
 
   const handleClearAllFilters = () => {
     setSearchTerm('')
-    setFilterCodigoTuss('')
-    setFilterNome('')
     setFilterDataInicio('')
     setFilterDataFim('')
-    setFilterStatus('todos')
   }
 
-  // Filtragem dos Acordos TUSS com suporte à busca e aos 5 filtros
+  // Filtragem dos Acordos TUSS com suporte à busca e aos filtros
   const filteredAcordos = useMemo(() => {
     return acordos.filter(item => {
-      // 1. Busca rápida no Header
+      // 1. Busca rápida no Header (código TUSS e nome)
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase().trim()
         const matchCod = String(item.codigo_tuss || '').toLowerCase().includes(term)
-        const matchNome = String(item.nome || item.descricao || '').toLowerCase().includes(term)
-        const matchGrupo = String(item.grupo || '').toLowerCase().includes(term)
-        if (!matchCod && !matchNome && !matchGrupo) return false
+        const matchNome = String(item.nome || '').toLowerCase().includes(term)
+        if (!matchCod && !matchNome) return false
       }
 
-      // 2. Filtro 1: codigo_tuss
-      if (filterCodigoTuss.trim()) {
-        const term = filterCodigoTuss.toLowerCase().trim()
-        if (!String(item.codigo_tuss || '').toLowerCase().includes(term)) return false
-      }
-
-      // 3. Filtro 2: nome (procedimento)
-      if (filterNome.trim()) {
-        const term = filterNome.toLowerCase().trim()
-        const nomeVal = String(item.nome || item.descricao || '').toLowerCase()
-        if (!nomeVal.includes(term)) return false
-      }
-
-      // 4. Filtro 3: acordo_data_inicio
+      // 2. Filtro 1: acordo_data_inicio
       if (filterDataInicio.trim()) {
-        const dtInicio = String(item.acordo_data_inicio || item.vigencia_inicio || '')
+        const dtInicio = String(item.acordo_data_inicio || '')
         if (dtInicio && dtInicio < filterDataInicio) return false
       }
 
-      // 5. Filtro 4: acordo_data_fim
+      // 3. Filtro 2: acordo_data_fim
       if (filterDataFim.trim()) {
-        const dtFim = String(item.acordo_data_fim || item.vigencia_fim || '')
+        const dtFim = String(item.acordo_data_fim || '')
         if (dtFim && dtFim > filterDataFim) return false
-      }
-
-      // 6. Filtro 5: Status
-      if (filterStatus !== 'todos') {
-        const st = String(item.status || 'ATIVO').toUpperCase()
-        if (st !== filterStatus) return false
       }
 
       return true
     })
-  }, [acordos, searchTerm, filterCodigoTuss, filterNome, filterDataInicio, filterDataFim, filterStatus])
+  }, [acordos, searchTerm, filterDataInicio, filterDataFim])
 
   // Paginação
   const handlePageChange = useCallback((newPage) => {
@@ -219,97 +169,9 @@ export default function PrestadorAcordos() {
     }
   }, [currentPage, handlePageChange, setPagination, resetPagination])
 
-  // Handlers do Modal de Cadastro/Edição
+  // Handlers de Navegação para Formulário Fullscreen
   const handleOpenNewModal = () => {
-    setEditingAcordo(null)
-    setFormData({
-      codigo_tuss: '',
-      descricao: '',
-      nome: '',
-      grupo: 'Consultas Médicas',
-      rol_ans: true,
-      valor_referencia: 150.00,
-      valor_acordado: 150.00,
-      fator_ch: 40,
-      filme_porte: 0,
-      exige_autorizacao: false,
-      vigencia_inicio: new Date().toISOString().slice(0, 10),
-      vigencia_fim: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      acordo_data_inicio: new Date().toISOString().slice(0, 10),
-      acordo_data_fim: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      status: 'ATIVO',
-      regra_coparticipacao: 'Padrão da Operadora (20%)',
-      observacoes_acordo: ''
-    })
-    setIsModalOpen(true)
-  }
-
-  const handleOpenEditModal = (acordo) => {
-    setEditingAcordo(acordo)
-    setFormData({
-      codigo_tuss: acordo.codigo_tuss || '',
-      descricao: acordo.descricao || acordo.nome || '',
-      nome: acordo.nome || acordo.descricao || '',
-      grupo: acordo.grupo || 'Consultas Médicas',
-      rol_ans: acordo.rol_ans ?? true,
-      valor_referencia: acordo.valor_referencia || 0,
-      valor_acordado: acordo.valor_acordado || 0,
-      fator_ch: acordo.fator_ch || 0,
-      filme_porte: acordo.filme_porte || 0,
-      exige_autorizacao: Boolean(acordo.exige_autorizacao),
-      vigencia_inicio: acordo.acordo_data_inicio || acordo.vigencia_inicio || new Date().toISOString().slice(0, 10),
-      vigencia_fim: acordo.acordo_data_fim || acordo.vigencia_fim || '',
-      acordo_data_inicio: acordo.acordo_data_inicio || acordo.vigencia_inicio || new Date().toISOString().slice(0, 10),
-      acordo_data_fim: acordo.acordo_data_fim || acordo.vigencia_fim || '',
-      status: acordo.status || 'ATIVO',
-      regra_coparticipacao: acordo.regra_coparticipacao || 'Padrão da Operadora (20%)',
-      observacoes_acordo: acordo.observacoes_acordo || ''
-    })
-    setIsModalOpen(true)
-  }
-
-  const handleSaveAcordo = async (e) => {
-    e.preventDefault()
-    if (!prestador?.id) return
-
-    if (!formData.codigo_tuss.trim()) {
-      notify.warning('Código Obrigatório', 'Informe o código TUSS do procedimento.')
-      return
-    }
-
-    const nomeProcedimento = formData.descricao.trim() || formData.nome.trim()
-    if (!nomeProcedimento) {
-      notify.warning('Descrição Obrigatória', 'Informe o nome/descrição do procedimento TUSS.')
-      return
-    }
-
-    try {
-      const payload = {
-        ...formData,
-        descricao: nomeProcedimento,
-        nome: nomeProcedimento,
-        acordo_data_inicio: formData.vigencia_inicio || formData.acordo_data_inicio,
-        acordo_data_fim: formData.vigencia_fim || formData.acordo_data_fim,
-        prestador: prestador.id,
-        id: editingAcordo ? editingAcordo.id : undefined
-      }
-      const res = await saveAcordo(prestador.id, payload)
-      if (res.success) {
-        const updatedList = await fetchAcordosByPrestador(prestador.id)
-        setAcordos(updatedList)
-
-        notify.success(
-          editingAcordo ? 'Acordo Atualizado' : 'Procedimento Acordado',
-          `Código TUSS ${formData.codigo_tuss} salvo com sucesso no banco de dados SQLite.`
-        )
-        setIsModalOpen(false)
-      } else {
-        notify.error('Erro ao Salvar', res.error || 'Falha ao gravar acordo TUSS.')
-      }
-    } catch (err) {
-      console.error('Erro ao salvar acordo:', err)
-      notify.error('Erro ao Salvar', err.message || 'Falha ao gravar acordo TUSS.')
-    }
+    navigate(`/prestadores/${id}/acordos/novo`)
   }
 
   // Handler de Clique com Botão Direito na Linha (ContextMenu)
@@ -326,9 +188,15 @@ export default function PrestadorAcordos() {
     setContextMenu(prev => ({ ...prev, visible: false }))
   }
 
+  const handleViewFromContextMenu = () => {
+    if (contextMenu.selectedItem) {
+      navigate(`/prestadores/${id}/acordos/${contextMenu.selectedItem.id}`)
+    }
+  }
+
   const handleEditFromContextMenu = () => {
     if (contextMenu.selectedItem) {
-      handleOpenEditModal(contextMenu.selectedItem)
+      navigate(`/prestadores/${id}/acordos/editar/${contextMenu.selectedItem.id}`)
     }
   }
 
@@ -349,8 +217,10 @@ export default function PrestadorAcordos() {
     try {
       const res = await deleteAcordo(deleteModal.item.id)
       if (res.success) {
-        const updatedList = await fetchAcordosByPrestador(prestador.id)
-        setAcordos(updatedList)
+        const updatedListRes = await fetchAcordosByPrestador(prestador.id)
+        if (updatedListRes.success) {
+          setAcordos(updatedListRes.data)
+        }
         notify.success('Acordo Removido', `O procedimento TUSS ${deleteModal.item.codigo_tuss} foi excluído do acordo.`)
       } else {
         notify.error('Erro ao Excluir', res.error || 'Não foi possível remover o acordo.')
@@ -376,62 +246,21 @@ export default function PrestadorAcordos() {
       header: 'Nome do Procedimento',
       minWidth: '240px',
       maxWidth: '380px',
-      render: (val, row) => String(row.nome || row.descricao || val || '-')
-    },
-    {
-      key: 'grupo',
-      header: 'Grupo',
-      minWidth: '160px',
-      maxWidth: '220px',
-      render: (val, row) => String(row.grupo || val || '-')
-    },
-    {
-      key: 'valor_acordado',
-      header: 'Valor Acordado',
-      minWidth: '140px',
-      maxWidth: '170px',
-      render: (val, row) => {
-        const v = row.valor_acordado ?? row.valor_referencia ?? val
-        if (typeof v === 'number') {
-          return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-        }
-        return String(v || '-')
-      }
-    },
-    {
-      key: 'rol_ans',
-      header: 'Rol ANS',
-      minWidth: '100px',
-      maxWidth: '120px',
-      render: (val, row) => (row.rol_ans !== false && val !== false ? 'Sim' : 'Não')
-    },
-    {
-      key: 'exige_autorizacao',
-      header: 'Exige Guia / Autorização',
-      minWidth: '170px',
-      maxWidth: '210px',
-      render: (val, row) => (row.exige_autorizacao || val ? 'Sim' : 'Não (Livre)')
+      render: (val, row) => String(row.nome || val || '-')
     },
     {
       key: 'acordo_data_inicio',
       header: 'Início Acordo',
       minWidth: '120px',
       maxWidth: '140px',
-      render: (val, row) => String(row.acordo_data_inicio || row.vigencia_inicio || val || '-')
+      render: (val, row) => String(row.acordo_data_inicio || val || '-')
     },
     {
       key: 'acordo_data_fim',
       header: 'Fim Acordo',
       minWidth: '120px',
       maxWidth: '140px',
-      render: (val, row) => String(row.acordo_data_fim || row.vigencia_fim || val || '-')
-    },
-    {
-      key: 'status',
-      header: 'Status Acordo',
-      minWidth: '120px',
-      maxWidth: '140px',
-      render: (val, row) => String(row.status || val || 'ATIVO')
+      render: (val, row) => String(row.acordo_data_fim || val || '-')
     }
   ]
 
@@ -460,7 +289,7 @@ export default function PrestadorAcordos() {
     display: 'block'
   }
 
-  const prestadorNome = prestador?.nome_razao_social || prestador?.nome_fantasia || prestador?.nome || 'PRESTADOR'
+  const prestadorNome = prestador?.nome || 'PRESTADOR'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', width: '100%', overflow: 'hidden' }}>
@@ -537,7 +366,7 @@ export default function PrestadorAcordos() {
                   alignItems: 'center'
                 }}
               >
-                <X size={13} />
+                ✕
               </button>
             )}
           </div>,
@@ -559,7 +388,7 @@ export default function PrestadorAcordos() {
         ]}
       />
 
-      {/* Seção de Filtros Dedicada com até 5 Filtros */}
+      {/* Seção de Filtros Dedicada com 2 Filtros de Data */}
       <section
         style={{
           padding: '0.75rem 1.5rem',
@@ -573,40 +402,10 @@ export default function PrestadorAcordos() {
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', alignItems: 'flex-end' }}>
           
-          {/* Filtro 1: Código TUSS */}
-          <div>
-            <label htmlFor="filter_codigo_tuss" style={filterLabelStyle}>
-              1. Código TUSS
-            </label>
-            <input
-              type="text"
-              id="filter_codigo_tuss"
-              value={filterCodigoTuss}
-              onChange={(e) => setFilterCodigoTuss(e.target.value)}
-              placeholder="Ex: 10101012..."
-              style={filterInputStyle}
-            />
-          </div>
-
-          {/* Filtro 2: Nome do Procedimento */}
-          <div>
-            <label htmlFor="filter_nome_procedimento" style={filterLabelStyle}>
-              2. Nome do Procedimento
-            </label>
-            <input
-              type="text"
-              id="filter_nome_procedimento"
-              value={filterNome}
-              onChange={(e) => setFilterNome(e.target.value)}
-              placeholder="Ex: Consulta, Hemograma..."
-              style={filterInputStyle}
-            />
-          </div>
-
-          {/* Filtro 3: Início do Acordo (acordo_data_inicio) */}
+          {/* Filtro 1: Início do Acordo (acordo_data_inicio) */}
           <div>
             <label htmlFor="filter_data_inicio" style={filterLabelStyle}>
-              3. Data Início (A partir)
+              1. Data Início (A partir)
             </label>
             <input
               type="date"
@@ -617,10 +416,10 @@ export default function PrestadorAcordos() {
             />
           </div>
 
-          {/* Filtro 4: Fim do Acordo (acordo_data_fim) */}
+          {/* Filtro 2: Fim do Acordo (acordo_data_fim) */}
           <div>
             <label htmlFor="filter_data_fim" style={filterLabelStyle}>
-              4. Data Fim (Até)
+              2. Data Fim (Até)
             </label>
             <input
               type="date"
@@ -629,25 +428,6 @@ export default function PrestadorAcordos() {
               onChange={(e) => setFilterDataFim(e.target.value)}
               style={filterInputStyle}
             />
-          </div>
-
-          {/* Filtro 5: Status do Acordo */}
-          <div>
-            <label htmlFor="filter_status_acordo" style={filterLabelStyle}>
-              5. Status do Acordo
-            </label>
-            <select
-              id="filter_status_acordo"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              style={filterInputStyle}
-            >
-              <option value="todos">Todos os Status</option>
-              <option value="ATIVO">Ativo</option>
-              <option value="EM NEGOCIAÇÃO">Em Negociação</option>
-              <option value="SUSPENSO">Suspenso</option>
-              <option value="CANCELADO">Cancelado</option>
-            </select>
           </div>
 
           {/* Botão de Limpeza quando há filtros ativos */}
@@ -674,8 +454,7 @@ export default function PrestadorAcordos() {
                 }}
                 title="Limpar todos os filtros aplicados"
               >
-                <FilterX size={14} />
-                Limpar Filtros
+                ✕ Limpar Filtros
               </button>
             </div>
           )}
@@ -708,7 +487,7 @@ export default function PrestadorAcordos() {
             columns={columns}
             data={filteredAcordos}
             emptyMessage="Nenhum procedimento TUSS acordado para os critérios selecionados."
-            onRowClick={(row) => handleOpenEditModal(row)}
+            onRowClick={(row) => navigate(`/prestadores/${id}/acordos/${row.id}`)}
             onRowContextMenu={handleRowContextMenu}
           />
         )}
@@ -720,232 +499,17 @@ export default function PrestadorAcordos() {
         y={contextMenu.y}
         visible={contextMenu.visible}
         onClose={handleCloseContextMenu}
-        itemTitle={contextMenu.selectedItem ? `${contextMenu.selectedItem.codigo_tuss} - ${contextMenu.selectedItem.nome || contextMenu.selectedItem.descricao}` : ''}
+        itemTitle={contextMenu.selectedItem ? `${contextMenu.selectedItem.codigo_tuss} - ${contextMenu.selectedItem.nome}` : ''}
+        onView={handleViewFromContextMenu}
         onEdit={handleEditFromContextMenu}
         onDelete={handleDeleteFromContextMenu}
       />
-
-      {/* Modal de Cadastro / Edição de Acordo TUSS */}
-      {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(3px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '1rem'
-          }}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            style={{
-              backgroundColor: currentTheme?.colors?.surface || (isDark ? '#18181b' : '#ffffff'),
-              color: currentTheme?.colors?.textPrimary || (isDark ? '#f4f4f5' : '#09090b'),
-              borderRadius: '0.75rem',
-              border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#27272a' : '#e4e4e7')}`,
-              width: '100%',
-              maxWidth: '680px',
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-              overflow: 'hidden'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                padding: '1.25rem 1.5rem',
-                borderBottom: `1px solid ${currentTheme?.colors?.border || (isDark ? '#27272a' : '#e4e4e7')}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '800' }}>
-                  {editingAcordo ? 'Editar Acordo TUSS' : 'Novo Acordo de Procedimento'}
-                </h3>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: currentTheme?.colors?.textSecondary || '#71717a' }}>
-                  Pactuação regulatória com {prestadorNome}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: currentTheme?.colors?.textSecondary || '#71717a',
-                  cursor: 'pointer',
-                  padding: '0.25rem'
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body / Formulário */}
-            <form onSubmit={handleSaveAcordo} style={{ overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              
-              {/* Código TUSS e Nome */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-                <div>
-                  <label style={filterLabelStyle}>Código TUSS *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.codigo_tuss}
-                    onChange={e => setFormData({ ...formData, codigo_tuss: e.target.value })}
-                    placeholder="Ex: 10101012"
-                    style={filterInputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={filterLabelStyle}>Nome / Descrição do Procedimento *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.descricao || formData.nome}
-                    onChange={e => setFormData({ ...formData, descricao: e.target.value, nome: e.target.value })}
-                    placeholder="Ex: Consulta Médica em Consultório"
-                    style={filterInputStyle}
-                  />
-                </div>
-              </div>
-
-              {/* Grupo e Status */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={filterLabelStyle}>Grupo de Procedimento</label>
-                  <input
-                    type="text"
-                    value={formData.grupo}
-                    onChange={e => setFormData({ ...formData, grupo: e.target.value })}
-                    placeholder="Ex: Consultas Médicas, Exames..."
-                    style={filterInputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={filterLabelStyle}>Status do Acordo</label>
-                  <select
-                    value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value })}
-                    style={filterInputStyle}
-                  >
-                    <option value="ATIVO">Ativo</option>
-                    <option value="EM NEGOCIAÇÃO">Em Negociação</option>
-                    <option value="SUSPENSO">Suspenso</option>
-                    <option value="CANCELADO">Cancelado</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Valores Acordados */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={filterLabelStyle}>Valor Acordado (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.valor_acordado}
-                    onChange={e => setFormData({ ...formData, valor_acordado: parseFloat(e.target.value) || 0 })}
-                    style={filterInputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={filterLabelStyle}>Valor de Referência (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.valor_referencia}
-                    onChange={e => setFormData({ ...formData, valor_referencia: parseFloat(e.target.value) || 0 })}
-                    style={filterInputStyle}
-                  />
-                </div>
-              </div>
-
-              {/* Vigências / Datas do Acordo */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={filterLabelStyle}>Data Início do Acordo</label>
-                  <input
-                    type="date"
-                    value={formData.acordo_data_inicio || formData.vigencia_inicio}
-                    onChange={e => setFormData({ ...formData, acordo_data_inicio: e.target.value, vigencia_inicio: e.target.value })}
-                    style={filterInputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={filterLabelStyle}>Data Fim do Acordo</label>
-                  <input
-                    type="date"
-                    value={formData.acordo_data_fim || formData.vigencia_fim}
-                    onChange={e => setFormData({ ...formData, acordo_data_fim: e.target.value, vigencia_fim: e.target.value })}
-                    style={filterInputStyle}
-                  />
-                </div>
-              </div>
-
-              {/* Flags Regulatórias */}
-              <div style={{ display: 'flex', gap: '2rem', padding: '0.5rem 0' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8125rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.rol_ans}
-                    onChange={e => setFormData({ ...formData, rol_ans: e.target.checked })}
-                  />
-                  Procedimento do Rol ANS
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8125rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.exige_autorizacao}
-                    onChange={e => setFormData({ ...formData, exige_autorizacao: e.target.checked })}
-                  />
-                  Exige Guia / Autorização Prévia
-                </label>
-              </div>
-
-              {/* Modal Footer */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '0.75rem',
-                  paddingTop: '1rem',
-                  borderTop: `1px solid ${currentTheme?.colors?.border || (isDark ? '#27272a' : '#e4e4e7')}`
-                }}
-              >
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingAcordo ? 'Salvar Alterações' : 'Cadastrar Acordo'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal de Exclusão de Acordo */}
       <ConfirmationModal
         isOpen={deleteModal.isOpen}
         title="Remover Acordo TUSS"
-        description={`Deseja remover o procedimento TUSS ${deleteModal.item?.codigo_tuss} (${deleteModal.item?.nome || deleteModal.item?.descricao}) da tabela de acordos de ${prestadorNome}?`}
+        description={`Deseja remover o procedimento TUSS ${deleteModal.item?.codigo_tuss} (${deleteModal.item?.nome}) da tabela de acordos de ${prestadorNome}?`}
         confirmText={deleteModal.loading ? 'Removendo...' : 'Sim, Remover'}
         cancelText="Cancelar"
         variant="danger"

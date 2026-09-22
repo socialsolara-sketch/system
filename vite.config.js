@@ -18,6 +18,7 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, './src/shared')
     }
   },
+  assetsInclude: ['**/*.db'],
   server: {
     host: '0.0.0.0',
     port: 3000,

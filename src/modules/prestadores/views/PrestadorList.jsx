@@ -1,18 +1,13 @@
 // Arquivo: src/modules/prestadores/views/PrestadorList.jsx
-// Descrição: Visualização e listagem dos prestadores da operadora (M04_PRESTADORES / M01_PESSOAS).
-// Filtros em Listbox importados e padronizados com base em filterConstants.js e serviços SQLite da pasta services/.
+// Descrição: Visualização e listagem dos prestadores da operadora.
+// Baseado na estrutura real do banco de dados SQLite.
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header, Table, Button, ContextMenu, ConfirmationModal } from '@layout'
-import {
-  PRODUTOS_LIST,
-  ESPECIALIDADES_LIST,
-  TIPOS_PRESTADOR_LIST,
-  PLANOS_LIST
-} from '../constants/filterConstants'
-import { fetchPrestadores, deletePrestador } from '../services'
+import { fetchPrestadores, deletePrestador, fetchEspecialidades, fetchAcordosByPrestador } from '../services'
 import { useTheme, useNotification, usePagination } from '@shared/context'
+import { CIDADES_LIST } from '../constants/filterConstants'
 import {
   Plus,
   RefreshCw,
@@ -32,11 +27,13 @@ export default function PrestadorList() {
 
   // Filtros de busca no header e filtros da section dedicada
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterEstrutura, setFilterEstrutura] = useState('todos')
+  const [codigoAcordado, setCodigoAcordado] = useState('')
+  const [filterCidade, setFilterCidade] = useState('todos')
   const [filterEspecialidade, setFilterEspecialidade] = useState('todos')
-  const [filterPlano, setFilterPlano] = useState('todos')
-  const [filterProduto, setFilterProduto] = useState('todos')
+  const [filterEstado, setFilterEstado] = useState('todos')
   const [filterContrato, setFilterContrato] = useState('todos')
+  const [especialidadesList, setEspecialidadesList] = useState([])
+  const [prestadorAcordos, setPrestadorAcordos] = useState({}) // Map de prestador_id -> acordos
 
   // Estado para exclusão com modal de confirmação
   const [deleteModal, setDeleteModal] = useState({
@@ -58,10 +55,37 @@ export default function PrestadorList() {
     setLoading(true)
     try {
       const res = await fetchPrestadores()
+      const espRes = await fetchEspecialidades()
+      
       if (res.success) {
         setData(res.data)
+        
+        // Carregar acordos de todos os prestadores para busca por código acordado
+        const acordosMap = {}
+        console.log('Carregando acordos para', res.data.length, 'prestadores')
+        
+        for (const prestador of res.data) {
+          if (prestador.id) {
+            console.log('Buscando acordos do prestador:', prestador.id, prestador.nome)
+            const acordosRes = await fetchAcordosByPrestador(prestador.id)
+            console.log('Resultado acordos para', prestador.nome, ':', acordosRes)
+            if (acordosRes.success) {
+              acordosMap[prestador.id] = acordosRes.data
+              console.log('Acordos carregados:', acordosRes.data.length)
+            } else {
+              acordosMap[prestador.id] = []
+              console.log('Erro ao carregar acordos:', acordosRes.error)
+            }
+          }
+        }
+        console.log('Map final de acordos:', acordosMap)
+        setPrestadorAcordos(acordosMap)
       } else {
         notify.error('Erro ao Carregar', res.error || 'Falha ao consultar prestadores no banco de dados SQLite.')
+      }
+      
+      if (espRes.success) {
+        setEspecialidadesList(espRes.data)
       }
     } catch (err) {
       console.error('[PrestadorList] Erro ao carregar:', err)
@@ -77,12 +101,28 @@ export default function PrestadorList() {
       try {
         setLoading(true)
         const res = await fetchPrestadores()
-        if (isMounted) {
-          if (res.success) {
-            setData(res.data)
-          } else {
-            notify.error('Erro ao Carregar', res.error || 'Falha ao consultar prestadores no banco de dados SQLite.')
+        const espRes = await fetchEspecialidades()
+        
+        if (isMounted && res.success) {
+          setData(res.data)
+          
+          // Carregar acordos de todos os prestadores para busca por código acordado
+          const acordosMap = {}
+          for (const prestador of res.data) {
+            if (prestador.id) {
+              const acordosRes = await fetchAcordosByPrestador(prestador.id)
+              if (acordosRes.success) {
+                acordosMap[prestador.id] = acordosRes.data
+              } else {
+                acordosMap[prestador.id] = []
+              }
+            }
           }
+          if (isMounted) setPrestadorAcordos(acordosMap)
+        }
+        
+        if (isMounted && espRes.success) {
+          setEspecialidadesList(espRes.data)
         }
       } catch (err) {
         if (isMounted) {
@@ -90,9 +130,7 @@ export default function PrestadorList() {
           notify.error('Falha', 'Falha ao carregar os dados de prestadores.')
         }
       } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
+        if (isMounted) setLoading(false)
       }
     }
 
@@ -100,106 +138,67 @@ export default function PrestadorList() {
     return () => { isMounted = false }
   }, [notify])
 
-  // Filtragem dos dados de prestadores utilizando as constantes de filterConstants.js
+  // Filtragem dos dados de prestadores
   const filteredData = useMemo(() => {
     return data.filter(item => {
-      // 1. Busca rápida no Header
+      // 1. Busca por Termo (Nome, CRM, Especialidade, Município, Estado)
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase().trim()
-        const matchNome = String(item.nome_razao_social || item.nome_fantasia || item.nome || '').toLowerCase().includes(term)
-        const matchCrm = String(item.crm || item.numero_conselho || '').toLowerCase().includes(term)
-        const matchEsp = String(item.especialidade || item.cbos || '').toLowerCase().includes(term)
-        const matchEst = String(item.estrutura || item.tipo_prestador || '').toLowerCase().includes(term)
-        const matchMun = String(item.municipio || item.cidade || '').toLowerCase().includes(term)
-        const matchUf = String(item.estado || item.uf || item.uf_conselho || '').toLowerCase().includes(term)
-        if (!matchNome && !matchCrm && !matchEsp && !matchEst && !matchMun && !matchUf) return false
+        const matchNome = String(item.nome || '').toLowerCase().includes(term)
+        const matchCrm = String(item.crm || '').toLowerCase().includes(term)
+        const matchEsp = String(item.especialidade_nome || '').toLowerCase().includes(term)
+        const matchMun = String(item.municipio || '').toLowerCase().includes(term)
+        const matchUf = String(item.estado || '').toLowerCase().includes(term)
+        if (!matchNome && !matchCrm && !matchEsp && !matchMun && !matchUf) return false
       }
 
-      // 2. Filtro 1: Estrutura (TIPOS_PRESTADOR_LIST)
-      if (filterEstrutura !== 'todos') {
-        const estVal = String(item.estrutura || item.tipo_prestador || '').toLowerCase()
-        const filterTerm = filterEstrutura.toLowerCase()
-        if (!estVal.includes(filterTerm) && !filterTerm.includes(estVal)) return false
+      // 2. Busca por Código Acordado (se o prestador tem esse código em algum acordo)
+      if (codigoAcordado.trim()) {
+        const term = codigoAcordado.trim()
+        const acordosDoPrestador = prestadorAcordos[item.id] || []
+        const temCodigoAcordado = acordosDoPrestador.some(acordo => {
+          const codigoTussStr = String(acordo.codigo_tuss || '')
+          const nomeStr = String(acordo.nome || '').toLowerCase()
+          // Verifica se o termo está no código TUSS (exato ou parcial) ou no nome do procedimento
+          return codigoTussStr.includes(term) || nomeStr.includes(term.toLowerCase())
+        })
+        if (!temCodigoAcordado) return false
       }
 
-      // 3. Filtro 2: Especialidade (ESPECIALIDADES_LIST)
+      // 3. Filtro por Cidade
+      if (filterCidade !== 'todos') {
+        const cidadeSelecionada = CIDADES_LIST.find(c => c.code === filterCidade)
+        if (cidadeSelecionada) {
+          const munVal = String(item.municipio || '').toLowerCase()
+          const cidLabel = cidadeSelecionada.label.toLowerCase()
+          if (!munVal.includes(cidLabel) && !cidLabel.includes(munVal)) return false
+        }
+      }
+
+      // 4. Filtro por Especialidade
       if (filterEspecialidade !== 'todos') {
-        const espVal = String(item.especialidade || item.cbos || '').toLowerCase()
+        const espVal = String(item.especialidade_nome || '').toLowerCase()
         const filterTerm = filterEspecialidade.toLowerCase()
         if (!espVal.includes(filterTerm) && !filterTerm.includes(espVal)) return false
       }
 
-      // 4. Filtro 3: Plano (PLANOS_LIST)
-      if (filterPlano !== 'todos') {
-        const planoVal = String(item.plano || item.planos || item.nome_plano || '').toLowerCase()
-        const filterTerm = filterPlano.toLowerCase()
-        if (!planoVal.includes(filterTerm) && !filterTerm.includes(planoVal)) return false
+      // 5. Filtro por Estado
+      if (filterEstado !== 'todos') {
+        const ufVal = String(item.estado || '').toLowerCase()
+        const filterTerm = filterEstado.toLowerCase()
+        if (ufVal !== filterTerm) return false
       }
 
-      // 5. Filtro 4: Produto (PRODUTOS_LIST)
-      if (filterProduto !== 'todos') {
-        const prodVal = String(item.produto || item.rede_produto || item.segmento || item.abrangencia || '').toLowerCase()
-        const filterTerm = filterProduto.toLowerCase()
-        if (!prodVal.includes(filterTerm) && !filterTerm.includes(prodVal)) return false
-      }
-
-      // 6. Filtro 5: Contrato Ativo
+      // 6. Filtro por Contrato Ativo
       if (filterContrato !== 'todos') {
-        const st = String(item.status_credenciamento || item.status || '').toUpperCase()
-        const isAtivo = (st === 'ATIVO' || item.contrato_ativo === 'Sim' || item.contrato_ativo === true) && !item.data_descredenciamento
-        const isSuspenso = st === 'SUSPENSO' || item.contrato_ativo === 'Suspenso'
+        const isAtivo = item.contrato_ativo_em && !item.contrato_encerrado_em
         if (filterContrato === 'ATIVO' && !isAtivo) return false
-        if (filterContrato === 'DESCREDENCIADO' && isAtivo) return false
-        if (filterContrato === 'SUSPENSO' && !isSuspenso) return false
+        if (filterContrato === 'ENCERRADO' && isAtivo) return false
       }
 
       return true
     })
-  }, [data, searchTerm, filterEstrutura, filterEspecialidade, filterPlano, filterProduto, filterContrato])
-
-  // Abertura do modal de exclusão
-  const handleOpenDelete = (e, item) => {
-    e?.stopPropagation()
-    setDeleteModal({
-      isOpen: true,
-      item,
-      loading: false
-    })
-  }
-
-  // Confirmação de exclusão direta via serviço SQLite
-  const handleConfirmDelete = async () => {
-    if (!deleteModal.item) return
-    setDeleteModal(prev => ({ ...prev, loading: true }))
-    try {
-      const idToDelete = deleteModal.item.id
-      const res = await deletePrestador(idToDelete)
-      if (res.success) {
-        setData(prev => prev.filter(p => String(p.id).toLowerCase() !== String(idToDelete).toLowerCase()))
-        notify.success(
-          'Prestador Removido',
-          `O prestador ${deleteModal.item.nome_razao_social || deleteModal.item.nome} foi excluído com sucesso.`
-        )
-      } else {
-        notify.error('Erro na Exclusão', res.error || 'Não foi possível excluir o prestador.')
-      }
-    } catch (err) {
-      console.error('Erro ao excluir prestador:', err)
-      notify.error('Erro na Exclusão', err.message || 'Não foi possível excluir o prestador.')
-    } finally {
-      setDeleteModal({ isOpen: false, item: null, loading: false })
-    }
-  }
-
-  // Handler de Clique com Botão Direito na Linha
-  const handleRowContextMenu = (e, row) => {
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      selectedItem: row
-    })
-  }
+  }, [data, searchTerm, codigoAcordado, filterCidade, filterEspecialidade, filterEstado, filterContrato, prestadorAcordos])
 
   const handleCloseContextMenu = () => {
     setContextMenu(prev => ({ ...prev, visible: false }))
@@ -229,6 +228,48 @@ export default function PrestadorList() {
     }
   }
 
+  const handleOpenDelete = (e, item) => {
+    e?.stopPropagation()
+    setDeleteModal({
+      isOpen: true,
+      item,
+      loading: false
+    })
+  }
+
+  const handleRowContextMenu = (e, row) => {
+    e.preventDefault()
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      selectedItem: row
+    })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.item?.id) return
+    setDeleteModal(prev => ({ ...prev, loading: true }))
+    try {
+      const idToDelete = deleteModal.item.id
+      const res = await deletePrestador(idToDelete)
+      if (res.success) {
+        setData(prev => prev.filter(p => String(p.id).toLowerCase() !== String(idToDelete).toLowerCase()))
+        notify.success(
+          'Prestador Removido',
+          `O prestador ${deleteModal.item.nome} foi excluído com sucesso.`
+        )
+      } else {
+        notify.error('Erro na Exclusão', res.error || 'Não foi possível excluir o prestador.')
+      }
+    } catch (err) {
+      console.error('Erro ao excluir prestador:', err)
+      notify.error('Erro na Exclusão', err.message || 'Não foi possível excluir o prestador.')
+    } finally {
+      setDeleteModal({ isOpen: false, item: null, loading: false })
+    }
+  }
+
   // Paginação
   const handlePageChange = useCallback((newPage) => {
     setCurrentPage(newPage)
@@ -254,119 +295,80 @@ export default function PrestadorList() {
       header: 'CRM',
       minWidth: '100px',
       maxWidth: '130px',
-      render: (val, row) => String(val || row.numero_conselho || row.crm || '-')
+      render: (val, row) => String(row.crm || val || '-')
     },
     {
       key: 'nome',
       header: 'Nome',
       minWidth: '220px',
       maxWidth: '320px',
-      render: (val, row) => String(val || row.nome_razao_social || row.nome_fantasia || row.nome || '-')
+      render: (val, row) => String(row.nome || val || '-')
     },
     {
-      key: 'especialidade',
+      key: 'especialidade_nome',
       header: 'Especialidade',
       minWidth: '170px',
       maxWidth: '240px',
-      render: (val, row) => String(val || row.especialidade || row.cbos || '-')
-    },
-    {
-      key: 'atendimento',
-      header: 'Atendimento',
-      minWidth: '130px',
-      maxWidth: '160px',
-      render: (val, row) => String(val || row.atendimento || row.modalidade_atendimento || 'Presencial')
-    },
-    {
-      key: 'idade',
-      header: 'Idade',
-      minWidth: '140px',
-      maxWidth: '180px',
-      render: (val, row) => String(val || row.idade || row.atendimento_idade || row.faixa_etaria || 'Todas as idades')
+      render: (val, row) => String(row.especialidade_nome || val || '-')
     },
     {
       key: 'estrutura',
       header: 'Estrutura',
       minWidth: '130px',
       maxWidth: '170px',
-      render: (val, row) => String(val || row.estrutura || row.tipo_prestador || '-')
+      render: (val, row) => String(row.estrutura || val || '-')
     },
     {
       key: 'unidade',
       header: 'Unidade',
       minWidth: '160px',
       maxWidth: '220px',
-      render: (val, row) => String(val || row.unidade || row.nome_fantasia || '-')
-    },
-    {
-      key: 'credenciado',
-      header: 'Credenciado',
-      minWidth: '110px',
-      maxWidth: '140px',
-      render: (val, row) => {
-        if (val !== undefined && val !== null && String(val).trim() !== '') return String(val)
-        if (row.credenciado) return String(row.credenciado)
-        const st = String(row.status_credenciamento || row.status || '').toUpperCase()
-        if (st === 'DESCREDENCIADO') return 'Não'
-        return 'Sim'
-      }
-    },
-    {
-      key: 'contrato_ativo',
-      header: 'Contrato Ativo',
-      minWidth: '125px',
-      maxWidth: '150px',
-      render: (val, row) => {
-        if (val !== undefined && val !== null && String(val).trim() !== '') return String(val)
-        if (row.contrato_ativo) return String(row.contrato_ativo)
-        const st = String(row.status_credenciamento || row.status || '').toUpperCase()
-        if (st === 'ATIVO' && !row.data_descredenciamento) return 'Sim'
-        if (st === 'SUSPENSO') return 'Suspenso'
-        return 'Não'
-      }
-    },
-    {
-      key: 'contrato_desativado',
-      header: 'Contrato Desativado',
-      minWidth: '160px',
-      maxWidth: '190px',
-      render: (val, row) => {
-        if (val !== undefined && val !== null && String(val).trim() !== '') return String(val)
-        if (row.contrato_desativado) return String(row.contrato_desativado)
-        if (row.data_descredenciamento) return String(row.data_descredenciamento)
-        const st = String(row.status_credenciamento || row.status || '').toUpperCase()
-        if (st === 'DESCREDENCIADO') return 'Sim'
-        return 'Não'
-      }
+      render: (val, row) => String(row.unidade || val || '-')
     },
     {
       key: 'estado',
       header: 'Estado',
       minWidth: '90px',
       maxWidth: '110px',
-      render: (val, row) => String(val || row.estado || row.uf || row.uf_conselho || '-')
+      render: (val, row) => String(row.estado || val || '-')
     },
     {
-      key: 'municipio_endereco',
-      header: 'Município e Endereço',
-      minWidth: '230px',
-      maxWidth: '340px',
+      key: 'municipio',
+      header: 'Município',
+      minWidth: '160px',
+      maxWidth: '220px',
+      render: (val, row) => String(row.municipio || val || '-')
+    },
+    {
+      key: 'contrato_ativo_em',
+      header: 'Contrato Ativo',
+      minWidth: '120px',
+      maxWidth: '150px',
       render: (val, row) => {
-        if (val && typeof val === 'string' && val.trim() !== '') return val
-        if (row['MUNICÍPIO ENDERECO']) return String(row['MUNICÍPIO ENDERECO'])
-        if (row.municipio_endereco) return String(row.municipio_endereco)
-        const mun = row.municipio || row.cidade || ''
-        const end = row.endereco || row.logradouro || ''
-        if (mun && end) return `${mun}, ${end}`
-        return String(mun || end || '-')
+        const isAtivo = row.contrato_ativo_em && !row.contrato_encerrado_em
+        return isAtivo ? 'Sim' : 'Não'
       }
     },
     {
-      key: 'numero_endereco',
-      header: 'Número',
-      minWidth: '100px',
-      maxWidth: '130px',
-      render: (val, row) => String(val || row.numero_endereco || row.numero || 'S/N')
+      key: 'telefone',
+      header: 'Telefone',
+      minWidth: '140px',
+      maxWidth: '180px',
+      render: (val, row) => String(row.telefone || val || '-')
+    },
+    {
+      key: 'whatsapp',
+      header: 'WhatsApp',
+      minWidth: '140px',
+      maxWidth: '180px',
+      render: (val, row) => String(row.whatsapp || val || '-')
+    },
+    {
+      key: 'idade',
+      header: 'Idade',
+      minWidth: '80px',
+      maxWidth: '100px',
+      render: (val, row) => String(row.idade || val || '-')
     }
   ]
 
@@ -403,45 +405,89 @@ export default function PrestadorList() {
         subtitle="Gestão de Credenciamento, Estabelecimentos de Saúde e Corpo Clínico"
         showSearchAndFilter={false}
         actions={[
-          <div key="search_header" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '230px' }}>
-            <Search size={15} style={{ position: 'absolute', left: '10px', color: currentTheme?.colors?.textSecondary || '#9ca3af', pointerEvents: 'none' }} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por CRM, nome ou UF..."
-              style={{
-                width: '100%',
-                height: '34px',
-                padding: '0 26px 0 32px',
-                fontSize: '0.8125rem',
-                color: currentTheme?.colors?.textPrimary || 'inherit',
-                backgroundColor: currentTheme?.colors?.input || (isDark ? '#27272a' : '#ffffff'),
-                border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3f3f46' : '#d1d5db')}`,
-                borderRadius: '6px',
-                outline: 'none'
-              }}
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                title="Limpar busca"
+          <div key="search_header" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {/* Campo 1: Código Acordado */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '180px' }}>
+              <input
+                type="text"
+                value={codigoAcordado}
+                onChange={(e) => setCodigoAcordado(e.target.value)}
+                placeholder="Código Acordado..."
                 style={{
-                  position: 'absolute',
-                  right: '8px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: currentTheme?.colors?.textSecondary || '#9ca3af',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center'
+                  width: '100%',
+                  height: '34px',
+                  padding: '0 26px 0 10px',
+                  fontSize: '0.8125rem',
+                  color: currentTheme?.colors?.textPrimary || 'inherit',
+                  backgroundColor: currentTheme?.colors?.input || (isDark ? '#27272a' : '#ffffff'),
+                  border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3f3f46' : '#d1d5db')}`,
+                  borderRadius: '6px',
+                  outline: 'none'
                 }}
-              >
-                <X size={13} />
-              </button>
-            )}
+              />
+              {codigoAcordado && (
+                <button
+                  type="button"
+                  onClick={() => setCodigoAcordado('')}
+                  title="Limpar código acordado"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: currentTheme?.colors?.textSecondary || '#9ca3af',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Campo 2: Buscar Prestador */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '230px' }}>
+              <Search size={15} style={{ position: 'absolute', left: '10px', color: currentTheme?.colors?.textSecondary || '#9ca3af', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar prestador..."
+                style={{
+                  width: '100%',
+                  height: '34px',
+                  padding: '0 26px 0 32px',
+                  fontSize: '0.8125rem',
+                  color: currentTheme?.colors?.textPrimary || 'inherit',
+                  backgroundColor: currentTheme?.colors?.input || (isDark ? '#27272a' : '#ffffff'),
+                  border: `1px solid ${currentTheme?.colors?.border || (isDark ? '#3f3f46' : '#d1d5db')}`,
+                  borderRadius: '6px',
+                  outline: 'none'
+                }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  title="Limpar busca"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: currentTheme?.colors?.textSecondary || '#9ca3af',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>,
           <Button
             key="cadastrar"
@@ -461,7 +507,7 @@ export default function PrestadorList() {
         ]}
       />
 
-      {/* Seção de Filtros Dedicada: Todos em Listbox baseados nas listas de filterConstants.js */}
+      {/* Seção de Filtros Dedicada: Filtros baseados nos dados reais do banco */}
       <section
         style={{
           padding: '0.75rem 1.5rem',
@@ -475,27 +521,32 @@ export default function PrestadorList() {
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', alignItems: 'flex-end' }}>
           
-          {/* Filtro 1: Estrutura / Tipo de Prestador (TIPOS_PRESTADOR_LIST) */}
+          {/* Filtro 1: Cidade */}
           <div>
-            <label htmlFor="filter_estrutura" style={filterLabelStyle}>
-              1. Estrutura
+            <label htmlFor="filter_cidade" style={filterLabelStyle}>
+              1. Cidade
             </label>
             <select
-              id="filter_estrutura"
-              value={filterEstrutura}
-              onChange={(e) => setFilterEstrutura(e.target.value)}
+              id="filter_cidade"
+              value={filterCidade}
+              onChange={(e) => setFilterCidade(e.target.value)}
               style={filterInputStyle}
             >
-              <option value="todos">Todas as Estruturas</option>
-              {TIPOS_PRESTADOR_LIST.map(tipo => (
-                <option key={tipo.code} value={tipo.label}>
-                  {tipo.label}
-                </option>
-              ))}
+              <option value="todos">Todas as Cidades</option>
+              <optgroup label="São Paulo (SP)">
+                {CIDADES_LIST.filter(c => c.estado === 'SP').map(c => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Mato Grosso do Sul (MS)">
+                {CIDADES_LIST.filter(c => c.estado === 'MS').map(c => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
-          {/* Filtro 2: Especialidade (ESPECIALIDADES_LIST) */}
+          {/* Filtro 2: Especialidade */}
           <div>
             <label htmlFor="filter_especialidade" style={filterLabelStyle}>
               2. Especialidade
@@ -507,58 +558,38 @@ export default function PrestadorList() {
               style={filterInputStyle}
             >
               <option value="todos">Todas as Especialidades</option>
-              {ESPECIALIDADES_LIST.map(esp => (
-                <option key={esp.code + esp.label} value={esp.label}>
-                  {esp.label}
+              {especialidadesList.map(esp => (
+                <option key={esp.id} value={esp.nome}>
+                  {esp.nome}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Filtro 3: Plano (PLANOS_LIST) */}
+          {/* Filtro 3: Estado */}
           <div>
-            <label htmlFor="filter_plano" style={filterLabelStyle}>
-              3. Plano
+            <label htmlFor="filter_estado" style={filterLabelStyle}>
+              3. Estado
             </label>
             <select
-              id="filter_plano"
-              value={filterPlano}
-              onChange={(e) => setFilterPlano(e.target.value)}
+              id="filter_estado"
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
               style={filterInputStyle}
             >
-              <option value="todos">Todos os Planos</option>
-              {PLANOS_LIST.map(plano => (
-                <option key={plano.code} value={plano.label}>
-                  {plano.label}
-                </option>
-              ))}
+              <option value="todos">Todos os Estados</option>
+              <option value="SP">SP</option>
+              <option value="RJ">RJ</option>
+              <option value="MG">MG</option>
+              <option value="RS">RS</option>
+              <option value="PR">PR</option>
             </select>
           </div>
 
-          {/* Filtro 4: Produto (PRODUTOS_LIST) */}
-          <div>
-            <label htmlFor="filter_produto" style={filterLabelStyle}>
-              4. Produto
-            </label>
-            <select
-              id="filter_produto"
-              value={filterProduto}
-              onChange={(e) => setFilterProduto(e.target.value)}
-              style={filterInputStyle}
-            >
-              <option value="todos">Todos os Produtos</option>
-              {PRODUTOS_LIST.filter(p => p.id).map(prod => (
-                <option key={prod.id} value={prod.label}>
-                  {prod.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtro 5: Status Contratual */}
+          {/* Filtro 4: Contrato Ativo */}
           <div>
             <label htmlFor="filter_contrato" style={filterLabelStyle}>
-              5. Contrato Ativo
+              4. Contrato Ativo
             </label>
             <select
               id="filter_contrato"
@@ -568,8 +599,7 @@ export default function PrestadorList() {
             >
               <option value="todos">Todos os Contratos</option>
               <option value="ATIVO">Contrato Ativo (Sim)</option>
-              <option value="DESCREDENCIADO">Desativado / Não</option>
-              <option value="SUSPENSO">Suspenso</option>
+              <option value="ENCERRADO">Encerrado (Não)</option>
             </select>
           </div>
         </div>
@@ -613,7 +643,7 @@ export default function PrestadorList() {
         y={contextMenu.y}
         visible={contextMenu.visible}
         onClose={handleCloseContextMenu}
-        itemTitle={contextMenu.selectedItem ? (contextMenu.selectedItem.nome_razao_social || contextMenu.selectedItem.nome) : ''}
+        itemTitle={contextMenu.selectedItem ? contextMenu.selectedItem.nome : ''}
         onView={handleView}
         onViewAcordos={handleViewAcordos}
         onEdit={handleEdit}
@@ -624,7 +654,7 @@ export default function PrestadorList() {
       <ConfirmationModal
         isOpen={deleteModal.isOpen}
         title="Excluir Prestador da Rede"
-        description={`Tem certeza que deseja excluir o prestador "${deleteModal.item?.nome_razao_social || deleteModal.item?.nome}" (${deleteModal.item?.codigo_operadora_prestador || 'RDA'})? Esta ação removerá o registro cadastral da rede credenciada.`}
+        description={`Tem certeza que deseja excluir o prestador "${deleteModal.item?.nome}"? Esta ação removerá o registro cadastral da rede credenciada.`}
         confirmText={deleteModal.loading ? 'Excluindo...' : 'Sim, Excluir'}
         cancelText="Cancelar"
         variant="danger"

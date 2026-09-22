@@ -1,6 +1,27 @@
 // Arquivo: src/modules/prestadores/services/index.js
-// Descrição: Ponto de entrada unificado para os serviços do módulo de Prestadores com SQLite
+// Descrição: Exportação centralizada dos serviços do módulo de prestadores
 
-export * from './sqliteClient'
-export * from './prestadorService'
-export * from './acordoTussService'
+export {
+  initDatabase,
+  executeQuery,
+  executeNonQuery,
+  getSchema,
+  closeDatabase,
+  exportDatabase
+} from './sqliteClient'
+
+export {
+  fetchPrestadores,
+  getPrestadorById,
+  fetchEspecialidades,
+  fetchPlanos,
+  savePrestador,
+  deletePrestador
+} from './prestadorService'
+
+export {
+  fetchAcordosByPrestador,
+  getAcordoById,
+  saveAcordo,
+  deleteAcordo
+} from './acordoTussService'

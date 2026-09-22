@@ -8,6 +8,8 @@ import PrestadorList from './modules/prestadores/views/PrestadorList'
 import PrestadorDetail from './modules/prestadores/views/PrestadorDetail'
 import PrestadorForm from './modules/prestadores/views/PrestadorForm'
 import PrestadorAcordos from './modules/prestadores/views/PrestadorAcordos'
+import PrestadorAcordoForm from './modules/prestadores/views/PrestadorAcordoForm'
+import PrestadorAcordoDetail from './modules/prestadores/views/PrestadorAcordoDetail'
 import SystemSettings from './shared/layout/views/SystemSettings'
 
 // ==========================================
@@ -25,6 +27,9 @@ export default function App() {
           <Route path="/prestadores/novo" element={<PrestadorForm />} />
           <Route path="/prestadores/editar/:id" element={<PrestadorForm />} />
           <Route path="/prestadores/:id/acordos" element={<PrestadorAcordos />} />
+          <Route path="/prestadores/:id/acordos/novo" element={<PrestadorAcordoForm />} />
+          <Route path="/prestadores/:id/acordos/:acordoId" element={<PrestadorAcordoDetail />} />
+          <Route path="/prestadores/:id/acordos/editar/:acordoId" element={<PrestadorAcordoForm />} />
           <Route path="/prestadores/acordos/:id" element={<PrestadorAcordos />} />
           <Route path="/prestadores/:id" element={<PrestadorDetail />} />
 
